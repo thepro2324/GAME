@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - M4 Carbine Edition</title>
+    <title>2D Shooter - M4 Shooting Pose</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
         #controls {
@@ -19,13 +19,13 @@
 <body>
 
     <div id="controls">
-        <h3>כיוונון M4 Carbine</h3>
+        <h3>כיוונון M4 למצב ירי</h3>
         <div class="row">גודל: <input type="range" id="scale" min="0.01" max="2" step="0.01" value="0.5"> <span id="v-scale">0.5</span></div>
-        <div class="row">ימין/שמאל: <input type="range" id="posX" min="-1" max="1" step="0.01" value="0"> <span id="v-posX">0.0</span></div>
-        <div class="row">למעלה/למטה: <input type="range" id="posY" min="-1" max="1" step="0.01" value="0"> <span id="v-posY">0.0</span></div>
-        <div class="row">קדימה/אחורה: <input type="range" id="posZ" min="-1" max="1" step="0.01" value="0"> <span id="v-posZ">0.0</span></div>
+        <div class="row">ימין/שמאל (X): <input type="range" id="posX" min="-1" max="1" step="0.01" value="0.2"> <span id="v-posX">0.2</span></div>
+        <div class="row">למעלה/למטה (Y): <input type="range" id="posY" min="-2" max="1" step="0.01" value="0"> <span id="v-posY">0.0</span></div>
+        <div class="row">קדימה/אחורה (Z): <input type="range" id="posZ" min="-1" max="1" step="0.01" value="0.2"> <span id="v-posZ">0.2</span></div>
         <div class="row">סיבוב Y: <input type="range" id="rotY" min="0" max="6.28" step="0.1" value="1.57"> <span id="v-rotY">1.57</span></div>
-        <div class="row">סיבוב Z: <input type="range" id="rotZ" min="0" max="6.28" step="0.1" value="0"> <span id="v-rotZ">0.0</span></div>
+        <div class="row">סיבוב Z: <input type="range" id="rotZ" min="-3.14" max="3.14" step="0.1" value="0"> <span id="v-rotZ">0.0</span></div>
     </div>
 
     <script type="importmap">
@@ -76,24 +76,53 @@
                 }
             });
 
-            // 3. טעינת ה-M4 החדש
+            // 3. טעינת ה-M4
             loader.load('./models/m4_carbine_rifle.glb', (weaponGltf) => {
                 weapon = weaponGltf.scene;
-                
-                // מוודא שהחומרים נראים טוב
-                weapon.traverse(child => {
-                    if (child.isMesh) child.material.depthTest = true;
-                });
-
                 if (rightHandBone) {
                     rightHandBone.add(weapon);
                 } else {
                     player.add(weapon);
-                    weapon.position.y = 1.5;
                 }
                 updateWeaponUI();
-            }, undefined, (err) => console.error("שגיאה בטעינת m4_carbine_rifle.glb", err));
+            });
         });
+
+        // פונקציית האנימציה שביקשת - מסדרת את הידיים
+        function animateProcedural(model, isMoving, time) {
+            model.traverse((node) => {
+                if (node.isBone) {
+                    const n = node.name.toLowerCase();
+
+                    // יד ימין (אוחזת בהדק)
+                    if (n.includes('rightarm') || n.includes('upperarm_r')) {
+                        node.rotation.x = -1.5; 
+                        node.rotation.z = 0.2;  
+                    }
+                    if (n.includes('rightforearm') || n.includes('lowerarm_r')) {
+                        node.rotation.y = 0.5;  
+                    }
+
+                    // יד שמאל (תומכת בקנה)
+                    if (n.includes('leftarm') || n.includes('upperarm_l')) {
+                        node.rotation.x = -1.4; 
+                        node.rotation.z = -0.3; 
+                    }
+                    if (n.includes('leftforearm') || n.includes('lowerarm_l')) {
+                        node.rotation.y = -0.8; 
+                    }
+
+                    // רגליים
+                    if (isMoving) {
+                        const cycle = Math.sin(time * 12);
+                        if (n.includes('rightupleg')) node.rotation.x = cycle * 0.5;
+                        if (n.includes('leftupleg')) node.rotation.x = -cycle * 0.5;
+                    } else if (n.includes('leg')) {
+                        node.rotation.x = 0;
+                    }
+                }
+            });
+        }
 
         function updateWeaponUI() {
             if (!weapon) return;
@@ -121,16 +150,20 @@
 
         camera.position.set(0, 0, 10);
 
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
         function animate() {
             requestAnimationFrame(animate);
+            const time = performance.now() * 0.001;
             if (player) {
-                player.traverse(node => {
-                    if (node.isBone) {
-                        const n = node.name.toLowerCase();
-                        if (n.includes('rightarm')) node.rotation.x = -1.3;
-                        if (n.includes('leftarm')) { node.rotation.x = -1.1; node.rotation.z = 0.5; }
-                    }
-                });
+                const isMoving = keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft'];
+                const speed = 0.15;
+                if (keys['KeyD'] || keys['ArrowRight']) { player.position.x += speed; player.rotation.y = Math.PI / 2; }
+                if (keys['KeyA'] || keys['ArrowLeft']) { player.position.x -= speed; player.rotation.y = -Math.PI / 2; }
+
+                animateProcedural(player, isMoving, time);
                 camera.position.x = player.position.x;
                 camera.lookAt(player.position.x, player.position.y + 1.8, 0);
             }
