@@ -1,48 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D Game - Stratosphere Height</title>
+    <title>3D Game - Altitude 4800</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
-        
-        /* לוח בקרה משופר */
-        #admin-panel {
-            position: absolute; top: 10px; right: 10px;
-            background: rgba(0, 20, 40, 0.9); color: #00ffff;
-            padding: 15px; border: 2px solid #00ffff; border-radius: 10px;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            z-index: 2000; direction: rtl; box-shadow: 0 0 15px #00ffff;
-        }
-        button {
-            background: #00ffff; color: #000; border: none;
-            padding: 8px 12px; cursor: pointer; font-weight: bold; 
-            margin: 4px; border-radius: 5px;
-        }
-        button:hover { background: #fff; }
-        
         #loading-screen {
             position: fixed; width: 100%; height: 100%; background: #000;
             z-index: 1000; display: flex; flex-direction: column;
             justify-content: center; align-items: center; color: #00ffff;
+            font-family: sans-serif; direction: rtl;
         }
     </style>
 </head>
 <body>
 
     <div id="loading-screen">
-        <h1>משגר לגובה 1000...</h1>
+        <h1>נוסע לגובה 4800...</h1>
         <h2 id="percent">0%</h2>
-    </div>
-
-    <div id="admin-panel">
-        <b>שליטת מנהל (גובה 1000):</b><br>
-        גובה נוכחי: <span id="h-val">1000</span><br>
-        <button onclick="changeHeight(50)">עלה +50</button>
-        <button onclick="changeHeight(-50)">רד -50</button>
-        <br><br>
-        מהירות טיסה: <span id="s-val">2.0</span><br>
-        <button onclick="changeSpeed(0.5)">מהר יותר</button>
-        <button onclick="changeSpeed(-0.5)">לאט יותר</button>
     </div>
 
     <script type="importmap">
@@ -67,54 +41,43 @@
         };
 
         const scene = new THREE.Scene();
-        // הגדלת טווח הראייה ל-30,000 כדי שלא יעלמו השמיים והרצפה
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 30000);
+        // הגדלת טווח הראייה ל-50,000 עבור גובה 4800
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 50000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 1.8));
+        scene.add(new THREE.AmbientLight(0xffffff, 2.0));
 
         const loader = new GLTFLoader(loadingManager);
 
-        // טעינת שמיים (הגדלתי ל-15,000 שיתאים לגובה 1000)
+        // טעינת שמיים - הגדלה מאסיבית לגובה כזה
         loader.load('./models/fly_sky_technique_experimental.glb', (gltf) => {
             const sky = gltf.scene;
-            sky.scale.set(15000, 15000, 15000);
+            sky.scale.set(25000, 25000, 25000);
             sky.traverse(n => { if(n.isMesh) n.material.side = THREE.DoubleSide; });
             scene.add(sky);
         });
 
         // טעינת רצפה ענקית
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
-            gltf.scene.scale.set(5000, 1, 5000);
-            scene.add(gltf.scene);
+            const floor = gltf.scene;
+            floor.scale.set(10000, 1, 10000);
+            scene.add(floor);
         });
 
         let player;
-        let moveSpeed = 2.0;
+        const moveSpeed = 10.0; // מהירות גבוהה מאוד שמתאימה לגובה כזה
 
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
-            player.position.y = 1000; // כאן הגדרנו את הגובה שביקשת!
+            player.position.set(0, 4800, 0); // הגובה החדש שלך
             scene.add(player);
+            
             camera.position.set(0, 1.7, 0); 
             player.add(camera);
             player.visible = false; 
         });
-
-        // פונקציות ללוח הבקרה
-        window.changeHeight = (amount) => {
-            if (player) {
-                player.position.y += amount;
-                document.getElementById('h-val').innerText = Math.round(player.position.y);
-            }
-        };
-
-        window.changeSpeed = (amount) => {
-            moveSpeed = Math.max(0.1, moveSpeed + amount);
-            document.getElementById('s-val').innerText = moveSpeed.toFixed(1);
-        };
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
@@ -123,10 +86,11 @@
         function animate() {
             requestAnimationFrame(animate);
             if (player) {
+                // תנועה בסיסית עם WASD
                 if (keys['KeyW']) player.translateZ(-moveSpeed);
                 if (keys['KeyS']) player.translateZ(moveSpeed);
-                if (keys['KeyA']) player.rotation.y += 0.04;
-                if (keys['KeyD']) player.rotation.y -= 0.04;
+                if (keys['KeyA']) player.rotation.y += 0.03;
+                if (keys['KeyD']) player.rotation.y -= 0.03;
             }
             renderer.render(scene, camera);
         }
