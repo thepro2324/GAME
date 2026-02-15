@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Weapon Finder</title>
+    <title>2D Shooter - Weapon Visibility Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
         #debug { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding: 10px; font-family: sans-serif; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="debug">סטטוס: טוען מודלים...</div>
+    <div id="debug">סטטוס: מחפש נשק...</div>
 
     <script type="importmap">
         {
@@ -48,14 +48,13 @@
             scene.add(floor);
         });
 
-        // 2. טעינת הדמות
+        // 2. טעינת דמות
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(1.2, 1.2, 1.2);
             player.position.set(0, -3.5, 0);
             scene.add(player);
 
-            // חיפוש עצם היד - סורק את כל האפשרויות
             player.traverse((node) => {
                 const name = node.name.toLowerCase();
                 if (node.isBone && (name.includes('hand') && (name.includes('r') || name.includes('right')))) {
@@ -63,27 +62,27 @@
                 }
             });
 
-            // 3. טעינת הנשק - בדיקה כפולה לשם הקובץ
+            // 3. טעינת הנשק - rife.glb
             loader.load('./models/rife.glb', (weaponGltf) => {
                 weapon = weaponGltf.scene;
                 
-                // הגדלנו את הנשק משמעותית כדי לוודא שרואים אותו (Scale 2.0)
-                weapon.scale.set(2.0, 2.0, 2.0); 
-                weapon.rotation.y = Math.PI / 2;
+                // הגדלה משמעותית כדי לוודא שרואים אותו
+                weapon.scale.set(3.0, 3.0, 3.0); 
+
+                // --- תיקון מיקום וסיבוב ---
+                // אנחנו מסובבים את הנשק ב-90 מעלות על ה-Y כדי שיפנה קדימה
+                weapon.rotation.y = Math.PI / 2; 
+                // אנחנו מזיזים אותו מעט קדימה (Z) ולמעלה (Y) כדי שלא ייבלע ביד
+                weapon.position.set(0.2, 0.1, 0.2); 
 
                 if (rightHandBone) {
                     rightHandBone.add(weapon);
-                    weapon.position.set(0, 0, 0); 
-                    debugElement.innerText = "סטטוס: נשק הוצמד ליד בהצלחה";
+                    debugElement.innerText = "סטטוס: נשק הוצמד ליד - בדוק אם הוא בולט";
                 } else {
                     player.add(weapon);
                     weapon.position.set(0, 1.8, 0.5);
-                    debugElement.innerText = "סטטוס: נשק הוצמד לגוף (יד לא נמצאה)";
+                    debugElement.innerText = "סטטוס: הוצמד לגוף (עצם יד לא זוהתה)";
                 }
-            }, undefined, (err) => {
-                debugElement.innerText = "שגיאה: קובץ rife.glb לא נמצא בתיקיית models!";
-                debugElement.style.color = "red";
-                console.error(err);
             });
         });
 
@@ -97,10 +96,11 @@
             model.traverse((node) => {
                 if (node.isBone) {
                     const name = node.name.toLowerCase();
-                    if (name.includes('rightarm')) node.rotation.x = -1.3;
+                    // תנוחה קרבית - ידיים מושטות קדימה
+                    if (name.includes('rightarm')) node.rotation.x = -1.4;
                     if (name.includes('leftarm')) {
-                        node.rotation.x = -1.1;
-                        node.rotation.z = 0.5;
+                        node.rotation.x = -1.2;
+                        node.rotation.z = 0.6;
                     }
                     if (isMoving) {
                         const cycle = Math.sin(time * 12);
@@ -114,11 +114,9 @@
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now() * 0.001;
-
             if (player) {
                 const speed = 0.15;
                 const isMoving = keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft'];
-
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
                     player.rotation.y = Math.PI / 2;
@@ -127,7 +125,6 @@
                     player.position.x -= speed;
                     player.rotation.y = -Math.PI / 2;
                 }
-
                 animateProcedural(player, isMoving, time);
                 camera.position.x = player.position.x;
                 camera.lookAt(player.position.x, player.position.y + 1.8, 0);
