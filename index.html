@@ -1,18 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Debug Mode</title>
+    <title>2D Shooter - Procedural Animation</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
-        #status {
-            position: absolute; top: 10px; left: 10px; color: red;
-            background: rgba(0,0,0,0.7); padding: 10px; font-family: monospace;
-            z-index: 100; pointer-events: none;
+        #instructions {
+            position: absolute; top: 10px; width: 100%; text-align: center;
+            color: white; font-family: sans-serif; text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
         }
     </style>
 </head>
 <body>
-    <div id="status">סטטוס טעינה: ממתין...</div>
+    <div id="instructions">תנועה: A ו-D | תנוחת ירי מובנית בקוד</div>
 
     <script type="importmap">
         {
@@ -26,9 +26,7 @@
     <script type="module">
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
-        const status = document.getElementById('status');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
 
@@ -37,49 +35,29 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 3)); // תאורה חזקה מאוד
+        scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+        const sun = new THREE.DirectionalLight(0xffffff, 1);
+        sun.position.set(5, 10, 5);
+        scene.add(sun);
 
         const gltfLoader = new GLTFLoader();
-        const fbxLoader = new FBXLoader();
-        let player, mixer, clock = new THREE.Clock();
+        let player;
+        const clock = new THREE.Clock();
 
         // 1. טעינת רצפה
-        gltfLoader.load('./models/seamless__floor_tiled_texture_iv.glb', 
-            (gltf) => { scene.add(gltf.scene); gltf.scene.position.y = -2; gltf.scene.scale.set(1000, 1, 10); },
-            undefined, (err) => console.error("שגיאה בטעינת רצפה", err)
-        );
+        gltfLoader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
+            const floor = gltf.scene;
+            floor.scale.set(1000, 1, 10);
+            floor.position.y = -2;
+            scene.add(floor);
+        });
 
-        // 2. טעינת הדמות - שים לב לשם הקובץ!
-        // השתמשתי בקידוד %20 במקום רווח לביטחון
-        const modelPath = './models/indian_man_in_suit%20(1).glb';
-        const animPath = './models/Firing%20Rifle.fbx';
-
-        gltfLoader.load(modelPath, (gltf) => {
+        // 2. טעינת דמות
+        gltfLoader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(0.6, 0.6, 0.6);
             player.position.set(0, -2, 0);
             scene.add(player);
-            status.innerText = "הדמות נטענה! מנסה לטעון אנימציה...";
-            status.style.color = "yellow";
-
-            mixer = new THREE.AnimationMixer(player);
-
-            // 3. טעינת האנימציה
-            fbxLoader.load(animPath, (fbx) => {
-                if (fbx.animations.length > 0) {
-                    const action = mixer.clipAction(fbx.animations[0]);
-                    action.play();
-                    status.innerText = "הכל עובד!";
-                    status.style.color = "lime";
-                }
-            }, undefined, (err) => {
-                status.innerText = "שגיאה בטעינת האנימציה (FBX)";
-                console.error(err);
-            });
-
-        }, undefined, (err) => {
-            status.innerText = "שגיאה בטעינת המודל (GLB)";
-            console.error(err);
         });
 
         camera.position.set(0, 1, 10);
@@ -87,20 +65,70 @@
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
+        // פונקציה לעיוות העצמות לתנוחת ירי
+        function applyProceduralAnimation(model, isMoving, time) {
+            model.traverse((child) => {
+                if (child.isBone) {
+                    // --- תנוחת ירי (קבוע) ---
+                    // זרוע ימין קדימה (כאילו אוחזת בהדק)
+                    if (child.name.includes('RightArm')) {
+                        child.rotation.x = -1.2; 
+                        child.rotation.z = -0.2;
+                    }
+                    // זרוע שמאל תומכת
+                    if (child.name.includes('LeftArm')) {
+                        child.rotation.x = -1.0;
+                        child.rotation.z = 0.5;
+                    }
+
+                    // --- אנימציית הליכה (רק כשזזים) ---
+                    if (isMoving) {
+                        // תנועת רגליים פשוטה
+                        if (child.name.includes('RightUpLeg')) {
+                            child.rotation.x = Math.sin(time * 10) * 0.5;
+                        }
+                        if (child.name.includes('LeftUpLeg')) {
+                            child.rotation.x = -Math.sin(time * 10) * 0.5;
+                        }
+                    } else {
+                        // איפוס רגליים בעמידה
+                        if (child.name.includes('Leg')) {
+                            child.rotation.x = 0;
+                        }
+                    }
+                }
+            });
+        }
+
         function animate() {
             requestAnimationFrame(animate);
-            const delta = clock.getDelta();
-            if (mixer) mixer.update(delta);
-            if (player) {
-                // מניעת בריחה אחורה
-                player.traverse(c => {
-                    if (c.isBone && (c.name.includes("Hips") || c.name.includes("Root"))) {
-                        c.position.x = 0; c.position.z = 0;
-                    }
-                });
+            const time = performance.now() * 0.001;
 
-                if (keys['KeyD'] || keys['ArrowRight']) { player.position.x += 0.15; player.rotation.y = Math.PI / 2; }
-                if (keys['KeyA'] || keys['ArrowLeft']) { player.position.x -= 0.15; player.rotation.y = -Math.PI / 2; }
+            if (player) {
+                const speed = 0.15;
+                let moving = false;
+
+                if (keys['KeyD'] || keys['ArrowRight']) {
+                    player.position.x += speed;
+                    player.rotation.y = Math.PI / 2;
+                    moving = true;
+                }
+                if (keys['KeyA'] || keys['ArrowLeft']) {
+                    player.position.x -= speed;
+                    player.rotation.y = -Math.PI / 2;
+                    moving = true;
+                }
+
+                // הפעלת האנימציה שיצרנו בקוד
+                applyProceduralAnimation(player, moving, time);
+
+                // נדנוד גוף קל בזמן הליכה
+                if (moving) {
+                    player.position.y = -2 + Math.abs(Math.sin(time * 10)) * 0.05;
+                } else {
+                    player.position.y = -2;
+                }
+
                 camera.position.x = player.position.x;
             }
             renderer.render(scene, camera);
