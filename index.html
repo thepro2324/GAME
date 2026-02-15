@@ -1,27 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Mouse Control Body</title>
+    <title>2D Shooter - Full Body Puppet Control</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
-        #mouse-ui {
-            position: absolute; bottom: 20px; left: 50%;
-            transform: translateX(-50%);
+        #gui {
+            position: absolute; top: 10px; left: 10px;
             background: rgba(0,0,0,0.8); color: white; padding: 15px;
-            font-family: sans-serif; border-radius: 10px; text-align: center;
+            font-family: sans-serif; border-radius: 10px;
+            display: flex; flex-direction: column; gap: 10px;
         }
-        .mode-btn { background: #444; color: white; border: 1px solid white; padding: 5px 10px; cursor: pointer; }
-        .mode-btn.active { background: #ff4444; }
+        .btn-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        button { 
+            padding: 10px; cursor: pointer; border: none; border-radius: 5px;
+            background: #444; color: white; transition: 0.3s;
+        }
+        button.active { background: #ff4444; font-weight: bold; }
+        .hint { font-size: 12px; color: #ccc; margin-top: 5px; }
     </style>
 </head>
 <body>
 
-    <div id="mouse-ui">
-        <div>הזז את העכבר על המסך כדי להזיז את האיברים</div>
-        <div style="margin-top:10px;">
-            <button id="btn-arms" class="mode-btn active">שליטה בידיים</button>
-            <button id="btn-legs" class="mode-btn">שליטה ברגליים</button>
+    <div id="gui">
+        <div style="text-align:center; margin-bottom:5px;">בחר איבר לשליטה:</div>
+        <div class="btn-grid">
+            <button id="btn-r-arm" class="active">יד ימין (1)</button>
+            <button id="btn-l-arm">יד שמאל (2)</button>
+            <button id="btn-r-leg">רגל ימין (3)</button>
+            <button id="btn-l-leg">רגל שמאל (4)</button>
         </div>
+        <div class="hint">הזז עכבר למעלה/למטה לסיבוב</div>
     </div>
 
     <script type="importmap">
@@ -51,22 +59,23 @@
 
         const loader = new GLTFLoader();
         let player, weapon, rightHandBone;
-        let mouseX = 0, mouseY = 0;
-        let controlMode = 'arms'; // 'arms' או 'legs'
+        let mouseY = 0;
+        let selectedPart = 'rightarm'; // ברירת מחדל
 
-        // 1. רצפה
-        loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
-            gltf.scene.scale.set(1000, 1, 10);
-            gltf.scene.position.y = -3.5;
-            scene.add(gltf.scene);
-        });
+        // אובייקט לשמירת הזוויות של כל איבר
+        const pose = {
+            rightarm: 0,
+            leftarm: 0,
+            rightleg: 0,
+            leftleg: 0
+        };
 
-        // 2. דמות
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(1.2, 1.2, 1.2);
             player.position.set(0, -3.5, 0);
             scene.add(player);
+            
             player.traverse(node => {
                 if (node.isBone && node.name.toLowerCase().includes('hand') && node.name.toLowerCase().includes('r')) {
                     rightHandBone = node;
@@ -83,52 +92,59 @@
             });
         });
 
-        // מעקב אחרי העכבר (ערכים בין -1 ל-1)
-        window.addEventListener('mousemove', (event) => {
-            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
-            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        // עדכון עכבר
+        window.addEventListener('mousemove', (e) => {
+            mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+            // עדכון הזווית של האיבר שנבחר (מכפיל ב-2 כדי שיהיה טווח תנועה גדול)
+            pose[selectedPart] = mouseY * 2.5; 
         });
 
-        // כפתורי החלפת מצב
-        document.getElementById('btn-arms').onclick = () => {
-            controlMode = 'arms';
-            document.getElementById('btn-arms').classList.add('active');
-            document.getElementById('btn-legs').classList.remove('active');
-        };
-        document.getElementById('btn-legs').onclick = () => {
-            controlMode = 'legs';
-            document.getElementById('btn-legs').classList.add('active');
-            document.getElementById('btn-arms').classList.remove('active');
+        // כפתורים וקיצורי דרך
+        const buttons = {
+            'rightarm': document.getElementById('btn-r-arm'),
+            'leftarm': document.getElementById('btn-l-arm'),
+            'rightleg': document.getElementById('btn-r-leg'),
+            'leftleg': document.getElementById('btn-l-leg')
         };
 
-        function updateMousePose(model) {
+        function setMode(mode) {
+            selectedPart = mode;
+            Object.values(buttons).forEach(b => b.classList.remove('active'));
+            buttons[mode].classList.add('active');
+        }
+
+        buttons['rightarm'].onclick = () => setMode('rightarm');
+        buttons['leftarm'].onclick = () => setMode('leftarm');
+        buttons['rightleg'].onclick = () => setMode('rightleg');
+        buttons['leftleg'].onclick = () => setMode('leftleg');
+
+        window.addEventListener('keydown', (e) => {
+            if (e.key === '1') setMode('rightarm');
+            if (e.key === '2') setMode('leftarm');
+            if (e.key === '3') setMode('rightleg');
+            if (e.key === '4') setMode('leftleg');
+        });
+
+        function applyPose(model) {
             model.traverse((node) => {
                 if (node.isBone) {
                     const n = node.name.toLowerCase();
-
-                    if (controlMode === 'arms') {
-                        // שליטה בזרועות עם העכבר
-                        if (n.includes('arm') && !n.includes('fore')) {
-                            node.rotation.x = mouseY * 2; // למעלה-למטה
-                            node.rotation.z = mouseX;     // צדדים
-                        }
-                    } else if (controlMode === 'legs') {
-                        // שליטה ברגליים עם העכבר
-                        if (n.includes('upleg')) {
-                            node.rotation.x = mouseY * 1.5;
-                            node.rotation.z = mouseX * 0.5;
-                        }
-                    }
+                    
+                    // החלת הזוויות שנשמרו ב-pose
+                    if (n.includes('rightarm') || n.includes('upperarm_r')) node.rotation.x = pose.rightarm;
+                    if (n.includes('leftarm') || n.includes('upperarm_l')) node.rotation.x = pose.leftarm;
+                    if (n.includes('rightupleg') || n.includes('thigh_r')) node.rotation.x = pose.rightleg;
+                    if (n.includes('leftupleg') || n.includes('thigh_l')) node.rotation.x = pose.leftleg;
                 }
             });
         }
 
-        camera.position.set(0, 0, 10);
+        camera.position.set(0, 0, 8);
 
         function animate() {
             requestAnimationFrame(animate);
             if (player) {
-                updateMousePose(player);
+                applyPose(player);
                 camera.lookAt(player.position.x, player.position.y + 1.8, 0);
             }
             renderer.render(scene, camera);
