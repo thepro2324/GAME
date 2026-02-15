@@ -3,48 +3,85 @@
 <head>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
 </head>
-<body style="margin: 0; background: black;">
+<body style="margin: 0; background: #000;">
 <script>
     const config = {
         type: Phaser.AUTO,
         width: 800,
         height: 600,
-        physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+        physics: {
+            default: 'arcade',
+            arcade: { gravity: { y: 1000 }, debug: false } // הוספנו כוח משיכה לרצפה
+        },
         scene: { preload: preload, create: create, update: update }
     };
 
     const game = new Phaser.Game(config);
-    let player, cursors, bullets, enemies;
+    let player, cursors, platforms;
 
     function preload() {
-        // כאן טוענים תמונות (נשתמש בצורות זמניות כרגע)
+        // בגלל שאנחנו רק בגיט-האב, ניצור גרפיקה בתוך הקוד
     }
 
     function create() {
-        // יצירת השחקן
-        player = this.add.rectangle(400, 500, 40, 40, 0x00ff00);
-        this.physics.add.existing(player);
-        player.body.setCollideWorldBounds(true);
+        // 1. יצירת שמיים (מלבן כחול מדורג)
+        let sky = this.add.graphics();
+        sky.fillGradientStyle(0x000033, 0x000033, 0x4488ff, 0x4488ff, 1);
+        sky.fillRect(0, 0, 800, 600);
 
-        // קבוצת קליעים
-        bullets = this.physics.add.group();
+        // 2. הוספת "אור" - כוכבים קטנים ברקע
+        for (let i = 0; i < 100; i++) {
+            let x = Math.random() * 800;
+            let y = Math.random() * 400;
+            this.add.circle(x, y, 1, 0xffffff, Math.random());
+        }
 
-        // הגדרת מקלדת
+        // 3. יצירת רצפה (Platform)
+        platforms = this.physics.add.staticGroup();
+        let ground = this.add.graphics();
+        ground.fillStyle(0x664422, 1); // צבע חום אדמה
+        ground.fillRect(0, 0, 800, 50);
+        
+        // הפיכת הציור לאובייקט פיזי שהשחקן יכול לעמוד עליו
+        let groundTexture = ground.generateTexture('ground', 800, 50);
+        platforms.create(400, 575, 'ground');
+        ground.destroy(); // מוחקים את הציור הזמני
+
+        // 4. השחקן (הריבוע הירוק)
+        player = this.physics.add.sprite(400, 450, null);
+        player.setOrigin(0.5);
+        
+        // יצירת מראה לשחקן (ריבוע ירוק עם "עיניים" כדי שיהיה חמוד)
+        let playerGraphics = this.add.graphics();
+        playerGraphics.fillStyle(0x00ff00, 1);
+        playerGraphics.fillRect(0, 0, 40, 40);
+        playerGraphics.fillStyle(0x000000, 1);
+        playerGraphics.fillRect(8, 10, 5, 5);
+        playerGraphics.fillRect(27, 10, 5, 5);
+        playerGraphics.generateTexture('playerTex', 40, 40);
+        player.setTexture('playerTex');
+        playerGraphics.destroy();
+
+        player.setCollideWorldBounds(true);
+        this.physics.add.collider(player, platforms);
+
+        // מקלדת
         cursors = this.input.keyboard.createCursorKeys();
-        this.input.keyboard.on('keydown-SPACE', shoot, this);
     }
 
     function update() {
-        if (cursors.left.isDown) player.body.setVelocityX(-300);
-        else if (cursors.right.isDown) player.body.setVelocityX(300);
-        else player.body.setVelocityX(0);
-    }
+        if (cursors.left.isDown) {
+            player.setVelocityX(-250);
+        } else if (cursors.right.isDown) {
+            player.setVelocityX(250);
+        } else {
+            player.setVelocityX(0);
+        }
 
-    function shoot() {
-        let bullet = this.add.rectangle(player.x, player.y - 20, 5, 15, 0xffff00);
-        this.physics.add.existing(bullet);
-        bullets.add(bullet);
-        bullet.body.setVelocityY(-500);
+        // קפיצה (רק אם הוא על הרצפה)
+        if (cursors.up.isDown && player.body.touching.down) {
+            player.setVelocityY(-500);
+        }
     }
 </script>
 </body>
