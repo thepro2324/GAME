@@ -1,105 +1,89 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
-    <style>body { margin: 0; overflow: hidden; background: #000; }</style>
+    <title>3D GitHub Game - Character Loaded</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; }
+    </style>
 </head>
 <body>
-<script>
-    const config = {
-        type: Phaser.AUTO,
-        width: window.innerWidth, // רוחב מסך מלא
-        height: window.innerHeight, // גובה מסך מלא
-        physics: {
-            default: 'arcade',
-            arcade: { gravity: { y: 0 }, debug: false } // נוריד כוח משיכה גלובלי ליריות
-        },
-        scene: { preload: preload, create: create, update: update }
-    };
-
-    const game = new Phaser.Game(config);
-    let player, cursors, bullets, enemies, score = 0, scoreText;
-
-    function preload() {}
-
-    function create() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-
-        // שמיים על כל המסך
-        let sky = this.add.graphics();
-        sky.fillGradientStyle(0x000022, 0x000022, 0x111144, 0x111144, 1);
-        sky.fillRect(0, 0, w, h);
-
-        // כוכבים
-        for (let i = 0; i < 150; i++) {
-            this.add.circle(Math.random() * w, Math.random() * h, 1, 0xffffff, Math.random());
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
         }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050515);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // אור חזק כדי שנראה את החליפה של הדמות
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+        scene.add(ambientLight);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 2);
+        sunLight.position.set(5, 10, 5);
+        scene.add(sunLight);
 
         // רצפה
-        let ground = this.add.rectangle(w/2, h - 25, w, 50, 0x664422);
-        this.physics.add.existing(ground, true);
+        const grid = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
+        scene.add(grid);
 
-        // שחקן
-        player = this.add.rectangle(w/2, h - 80, 50, 50, 0x00ff00);
-        this.physics.add.existing(player);
-        player.body.setCollideWorldBounds(true);
+        let player;
+        const loader = new GLTFLoader();
 
-        // קבוצות ליריות ואויבים
-        bullets = this.physics.add.group();
-        enemies = this.physics.add.group();
-
-        // יצירת אויב כל שנייה
-        this.time.addEvent({
-            delay: 1000,
-            callback: spawnEnemy,
-            callbackScope: this,
-            loop: true
+        // טעינת המודל הספציפי שלך
+        // שים לב: השתמשתי ב-%20 עבור רווחים כדי שהדפדפן יזהה את הקובץ
+        loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
+            player = gltf.scene;
+            player.scale.set(2, 2, 2); // אם הדמות קטנה מדי, אפשר להגדיל פה
+            scene.add(player);
+            console.log("Model Loaded Successfully!");
+        }, undefined, (error) => {
+            console.error("Error loading model:", error);
+            // קובייה ירוקה למקרה חירום
+            const geo = new THREE.BoxGeometry(1, 2, 1);
+            player = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color: 0x00ff00}));
+            scene.add(player);
         });
 
-        // טקסט ניקוד
-        scoreText = this.add.text(20, 20, 'Score: 0', { fontSize: '32px', fill: '#fff' });
+        camera.position.set(0, 5, 10);
 
-        // התנגשויות
-        this.physics.add.overlap(bullets, enemies, hitEnemy, null, this);
-        this.physics.add.collider(player, ground);
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
 
-        cursors = this.input.keyboard.createCursorKeys();
-        this.input.keyboard.on('keydown-SPACE', shoot, this);
-    }
+        function animate() {
+            requestAnimationFrame(animate);
+            if (player) {
+                if (keys['ArrowLeft']) player.position.x -= 0.1;
+                if (keys['ArrowRight']) player.position.x += 0.1;
+                if (keys['ArrowUp']) player.position.z -= 0.1;
+                if (keys['ArrowDown']) player.position.z += 0.1;
+                
+                camera.position.x = player.position.x;
+                camera.position.z = player.position.z + 10;
+                camera.lookAt(player.position);
+            }
+            renderer.render(scene, camera);
+        }
+        animate();
 
-    function update() {
-        if (cursors.left.isDown) player.body.setVelocityX(-400);
-        else if (cursors.right.isDown) player.body.setVelocityX(400);
-        else player.body.setVelocityX(0);
-
-        // ניקוי אויבים שיצאו מהמסך
-        enemies.children.iterate(function (enemy) {
-            if (enemy && enemy.y > window.innerHeight) enemy.destroy();
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
         });
-    }
-
-    function shoot() {
-        let bullet = this.add.rectangle(player.x, player.y - 30, 8, 20, 0xffff00);
-        this.physics.add.existing(bullet);
-        bullets.add(bullet);
-        bullet.body.setVelocityY(-600);
-    }
-
-    function spawnEnemy() {
-        let x = Math.random() * window.innerWidth;
-        let enemy = this.add.rectangle(x, -50, 40, 40, 0xff0000);
-        this.physics.add.existing(enemy);
-        enemies.add(enemy);
-        enemy.body.setVelocityY(200 + Math.random() * 150);
-    }
-
-    function hitEnemy(bullet, enemy) {
-        bullet.destroy();
-        enemy.destroy();
-        score += 10;
-        scoreText.setText('Score: ' + score);
-    }
-</script>
+    </script>
 </body>
 </html>
