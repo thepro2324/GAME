@@ -1,12 +1,29 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Classic Legs Fix</title>
+    <title>2D Shooter - Mouse Control Body</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        #mouse-ui {
+            position: absolute; bottom: 20px; left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.8); color: white; padding: 15px;
+            font-family: sans-serif; border-radius: 10px; text-align: center;
+        }
+        .mode-btn { background: #444; color: white; border: 1px solid white; padding: 5px 10px; cursor: pointer; }
+        .mode-btn.active { background: #ff4444; }
     </style>
 </head>
 <body>
+
+    <div id="mouse-ui">
+        <div>הזז את העכבר על המסך כדי להזיז את האיברים</div>
+        <div style="margin-top:10px;">
+            <button id="btn-arms" class="mode-btn active">שליטה בידיים</button>
+            <button id="btn-legs" class="mode-btn">שליטה ברגליים</button>
+        </div>
+    </div>
+
     <script type="importmap">
         {
             "imports": {
@@ -34,6 +51,8 @@
 
         const loader = new GLTFLoader();
         let player, weapon, rightHandBone;
+        let mouseX = 0, mouseY = 0;
+        let controlMode = 'arms'; // 'arms' או 'legs'
 
         // 1. רצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
@@ -48,54 +67,57 @@
             player.scale.set(1.2, 1.2, 1.2);
             player.position.set(0, -3.5, 0);
             scene.add(player);
-
-            player.traverse((node) => {
+            player.traverse(node => {
                 if (node.isBone && node.name.toLowerCase().includes('hand') && node.name.toLowerCase().includes('r')) {
                     rightHandBone = node;
                 }
             });
 
-            // 3. נשק M4
-            loader.load('./models/m4_carbine_rifle.glb', (weaponGltf) => {
-                weapon = weaponGltf.scene;
+            loader.load('./models/m4_carbine_rifle.glb', (wGltf) => {
+                weapon = wGltf.scene;
                 weapon.scale.set(0.6, 0.6, 0.6);
                 if (rightHandBone) {
                     rightHandBone.add(weapon);
-                    weapon.position.set(0.1, 0, 0.1); // מיקום התחלתי בסיסי
                     weapon.rotation.y = Math.PI / 2;
                 }
             });
         });
 
-        const keys = {};
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
+        // מעקב אחרי העכבר (ערכים בין -1 ל-1)
+        window.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX / window.innerWidth) * 2 - 1;
+            mouseY = -(event.clientY / window.innerHeight) * 2 + 1;
+        });
 
-        // הפונקציה המקורית שסידרנו - עכשיו נוגעת ברגליים רק כשצריך (בדיוק כמו פעם)
-        function animateProcedural(model, isMoving, time) {
+        // כפתורי החלפת מצב
+        document.getElementById('btn-arms').onclick = () => {
+            controlMode = 'arms';
+            document.getElementById('btn-arms').classList.add('active');
+            document.getElementById('btn-legs').classList.remove('active');
+        };
+        document.getElementById('btn-legs').onclick = () => {
+            controlMode = 'legs';
+            document.getElementById('btn-legs').classList.add('active');
+            document.getElementById('btn-arms').classList.remove('active');
+        };
+
+        function updateMousePose(model) {
             model.traverse((node) => {
                 if (node.isBone) {
                     const n = node.name.toLowerCase();
 
-                    // --- תנוחת ידיים (חדש) ---
-                    if (n.includes('rightarm') || n.includes('upperarm_r')) {
-                        node.rotation.x = -1.5; 
-                    }
-                    if (n.includes('leftarm') || n.includes('upperarm_l')) {
-                        node.rotation.x = -1.4; 
-                    }
-
-                    // --- אנימציית רגליים (החזרתי למצב "כמו פעם") ---
-                    if (isMoving) {
-                        const cycle = Math.sin(time * 12);
-                        // מחפש את העצמות של הרגליים לפי השם הנכון
-                        if (n.includes('upleg') || n.includes('thigh')) {
-                            if (n.includes('r') || n.includes('right')) node.rotation.x = cycle * 0.5;
-                            if (n.includes('l') || n.includes('left')) node.rotation.x = -cycle * 0.5;
+                    if (controlMode === 'arms') {
+                        // שליטה בזרועות עם העכבר
+                        if (n.includes('arm') && !n.includes('fore')) {
+                            node.rotation.x = mouseY * 2; // למעלה-למטה
+                            node.rotation.z = mouseX;     // צדדים
                         }
-                    } else {
-                        // כשהוא עוצר, הרגליים חוזרות למצב טבעי בלי לאפס אותן בכוח
-                        if (n.includes('leg')) node.rotation.x = 0;
+                    } else if (controlMode === 'legs') {
+                        // שליטה ברגליים עם העכבר
+                        if (n.includes('upleg')) {
+                            node.rotation.x = mouseY * 1.5;
+                            node.rotation.z = mouseX * 0.5;
+                        }
                     }
                 }
             });
@@ -105,24 +127,8 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            const time = performance.now() * 0.001;
-
             if (player) {
-                const speed = 0.15;
-                const isMoving = keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft'];
-
-                if (keys['KeyD'] || keys['ArrowRight']) {
-                    player.position.x += speed;
-                    player.rotation.y = Math.PI / 2;
-                }
-                if (keys['KeyA'] || keys['ArrowLeft']) {
-                    player.position.x -= speed;
-                    player.rotation.y = -Math.PI / 2;
-                }
-
-                animateProcedural(player, isMoving, time);
-
-                camera.position.x = player.position.x;
+                updateMousePose(player);
                 camera.lookAt(player.position.x, player.position.y + 1.8, 0);
             }
             renderer.render(scene, camera);
