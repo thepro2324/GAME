@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Tactical Pose</title>
+    <title>Tactical Shooter - Final Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
     </style>
@@ -21,7 +21,6 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // הגדרות סצנה בסיסיות
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -29,114 +28,108 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // תאורה
-        scene.add(new THREE.AmbientLight(0xffffff, 2.5));
-        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-        sun.position.set(5, 10, 5);
-        scene.add(sun);
+        // תאורה חזקה וברורה
+        scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+        const dirLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        dirLight.position.set(5, 10, 7);
+        scene.add(dirLight);
 
         const loader = new GLTFLoader();
-        let player, weapon, rightHandBone;
+        let player, rightHandBone;
 
-        // 1. טעינת רצפה
-        loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
-            const floor = gltf.scene;
-            floor.scale.set(1000, 1, 10);
-            floor.position.y = -3.5;
-            scene.add(floor);
-        });
-
-        // 2. טעינת דמות והגדרת תנוחה
+        // טעינת הדמות
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(1.2, 1.2, 1.2);
             player.position.set(0, -3.5, 0);
             scene.add(player);
 
+            // מציאת כף יד ימין
             player.traverse((node) => {
                 if (node.isBone && node.name.toLowerCase().includes('hand') && node.name.toLowerCase().includes('r')) {
                     rightHandBone = node;
                 }
             });
 
-            // 3. טעינת נשק M4 והצמדתו ליד
+            // טעינת הנשק
             loader.load('./models/m4_carbine_rifle.glb', (weaponGltf) => {
-                weapon = weaponGltf.scene;
-                
-                // הגדרות גודל ומיקום קבועות (במקום הלוח)
-                weapon.scale.set(0.6, 0.6, 0.6);
+                const weapon = weaponGltf.scene;
+                weapon.scale.set(0.65, 0.65, 0.65); // גודל נשק
                 
                 if (rightHandBone) {
                     rightHandBone.add(weapon);
-                    // מיקום מדויק בתוך היד (X, Y, Z)
-                    weapon.position.set(0.05, 0.05, 0.1); 
-                    // סיבוב הנשק שיפנה קדימה
-                    weapon.rotation.y = Math.PI / 2;
-                    weapon.rotation.z = 0;
+                    // כיוונון עדין של הנשק בתוך כף היד
+                    weapon.position.set(0.05, 0.1, 0.05); 
+                    weapon.rotation.set(0, Math.PI / 2, 0); // סיבוב ישר קדימה
                 }
             });
         });
 
-        // פונקציית אנימציה טקטית (לפי הסרטון שלך)
-        function animateProcedural(model, isMoving, time) {
+        // --- הפונקציה שמייצרת את תנוחת ה"בובה הוורודה" ---
+        function applyTacticalAnim(model, isMoving, time) {
             model.traverse((node) => {
-                if (node.isBone) {
-                    const n = node.name.toLowerCase();
+                if (!node.isBone) return;
+                
+                const n = node.name.toLowerCase();
 
-                    // --- תנוחת פלג גוף עליון ---
-                    if (n.includes('spine')) {
-                        node.rotation.x = 0.15; // נטייה קלה קדימה
-                    }
+                // 1. קיבוע עמוד השדרה (מונע מהגוף ליפול אחורה כמו בסרטון השבור)
+                if (n.includes('spine')) {
+                    // הטיה קלה מאוד קדימה (התקפי) + סיבוב קל הצידה
+                    node.rotation.set(0.1, 0.3, 0); 
+                }
 
-                    // יד ימין (אוחזת בהדק)
-                    if (n.includes('rightarm') || n.includes('upperarm_r')) {
-                        node.rotation.x = -1.3;
-                        node.rotation.z = 0.2;
-                    }
-                    if (n.includes('rightforearm') || n.includes('lowerarm_r')) {
-                        node.rotation.y = 0.8;
-                    }
+                // 2. ידיים - תנוחת "Combat Hold" (צמוד לחזה)
+                
+                // יד ימין (אוחזת בהדק)
+                if (n.includes('rightarm') || n.includes('upperarm_r')) {
+                    // מרימים את הזרוע אחורה ולמטה
+                    node.rotation.set(-1.4, -0.4, 0.2);
+                }
+                if (n.includes('rightforearm') || n.includes('lowerarm_r')) {
+                    // קיפול חזק של המרפק (מקרב את הנשק לגוף)
+                    node.rotation.y = 1.4; 
+                }
 
-                    // יד שמאל (תומכת בקנה)
-                    if (n.includes('leftarm') || n.includes('upperarm_l')) {
-                        node.rotation.x = -1.2;
-                        node.rotation.z = -0.4;
-                    }
-                    if (n.includes('leftforearm') || n.includes('lowerarm_l')) {
-                        node.rotation.y = -1.1;
-                    }
+                // יד שמאל (תומכת בקנה)
+                if (n.includes('leftarm') || n.includes('upperarm_l')) {
+                    // שולחים את הזרוע קדימה וקצת ימינה
+                    node.rotation.set(-1.3, 0.6, -0.2);
+                }
+                if (n.includes('leftforearm') || n.includes('lowerarm_l')) {
+                    // קיפול מרפק כדי להחזיק את הקנה
+                    node.rotation.y = -1.4; 
+                }
 
-                    // --- אנימציית רגליים ---
-                    if (isMoving) {
-                        const cycle = Math.sin(time * 12);
-                        if (n.includes('upleg')) {
-                            if (n.includes('r')) node.rotation.x = cycle * 0.5;
-                            if (n.includes('l')) node.rotation.x = -cycle * 0.5;
-                        }
-                    } else {
-                        // עמידת קרב כשהוא סטטי (ברכיים כפופות)
-                        if (n.includes('upleg')) {
-                            node.rotation.x = -0.3; 
-                        }
-                        if (n.includes('leg') && !n.includes('up')) {
-                            node.rotation.x = 0.6; 
-                        }
+                // 3. רגליים - הליכה יציבה
+                if (isMoving) {
+                    const walkSpeed = 12;
+                    const stride = 0.6;
+                    
+                    if (n.includes('upleg')) {
+                        // תנועת הליכה בסיסית
+                        const move = Math.sin(time * walkSpeed) * stride;
+                        if (n.includes('r')) node.rotation.x = move;
+                        if (n.includes('l')) node.rotation.x = -move;
                     }
-
-                    // אנימציית נשימה עדינה (Idle)
-                    if (!isMoving && (n.includes('arm') || n.includes('spine'))) {
-                        node.rotation.x += Math.sin(time * 2) * 0.015;
+                    
+                    // קיפול ברכיים קטן בזמן הליכה (נותן תחושת משקל)
+                    if (n.includes('leg') && !n.includes('up')) {
+                        node.rotation.x = 0.5 + Math.abs(Math.sin(time * walkSpeed)) * 0.2;
                     }
+                } else {
+                    // עמידה במקום (Combat Stance)
+                    if (n.includes('upleg')) node.rotation.x = -0.1; // פיסוק קל
+                    if (n.includes('leg') && !n.includes('up')) node.rotation.x = 0.2; // ברכיים לא נעולות
                 }
             });
         }
 
-        // ניהול מקלדת
+        // שליטה במקלדת
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        camera.position.set(0, 0, 8);
+        camera.position.set(0, 1, 8); // זווית מצלמה נוחה
 
         function animate() {
             requestAnimationFrame(animate);
@@ -146,34 +139,31 @@
                 const speed = 0.12;
                 const isMoving = keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft'];
 
-                if (keys['KeyD'] || keys['ArrowRight']) {
-                    player.position.x += speed;
-                    player.rotation.y = Math.PI / 2;
+                if (keys['KeyD'] || keys['ArrowRight']) { 
+                    player.position.x += speed; 
+                    player.rotation.y = Math.PI / 2; 
                 }
-                if (keys['KeyA'] || keys['ArrowLeft']) {
-                    player.position.x -= speed;
-                    player.rotation.y = -Math.PI / 2;
+                if (keys['KeyA'] || keys['ArrowLeft']) { 
+                    player.position.x -= speed; 
+                    player.rotation.y = -Math.PI / 2; 
                 }
 
-                // הפעלת האנימציה
-                animateProcedural(player, isMoving, time);
+                applyTacticalAnim(player, isMoving, time);
 
-                // מצלמה עוקבת
+                // המצלמה עוקבת אחרי השחקן
                 camera.position.x = player.position.x;
                 camera.lookAt(player.position.x, player.position.y + 1.8, 0);
             }
-
             renderer.render(scene, camera);
         }
         animate();
 
-        // התאמת מסך
+        // התאמה לגודל מסך
         window.addEventListener('resize', () => {
             camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateProjectionMatrix();
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
-
     </script>
 </body>
 </html>
