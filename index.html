@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D Game - Ultimate Height & Sky Fix</title>
+    <title>3D Fix - Extreme Height & Huge Floor</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; }
-        #debug { position: absolute; top: 10px; left: 10px; color: #0f0; font-family: monospace; background: rgba(0,0,0,0.5); padding: 5px; }
+        body { margin: 0; overflow: hidden; background-color: #00050a; }
+        #ui { position: absolute; top: 10px; left: 10px; color: #00ff00; font-family: sans-serif; background: rgba(0,0,0,0.7); padding: 10px; border: 1px solid #0f0; direction: rtl; }
     </style>
 </head>
 <body>
-    <div id="debug">גובה מצלמה: <span id="h-val">0</span> | אם השמיים שחורים, וודא ששם הקובץ ב-GitHub מדויק</div>
+    <div id="ui">
+        <b>סטטוס מערכת:</b><br>
+        גובה נוכחי: <span id="height">0</span><br>
+        שמיים: <span id="sky-status">טוען...</span>
+    </div>
+
     <script type="importmap">
         {
             "imports": {
@@ -23,37 +28,45 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         const scene = new THREE.Scene();
-        // הגדלת מרחק הראייה ל-10,000 כדי שלא נפספס מודלים רחוקים
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 10000);
+        // הגדלת טווח ראייה ל-20,000 כדי שלא יעלמו דברים בגובה
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // תאורה חזקה מאוד
-        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
-        const sun = new THREE.DirectionalLight(0xffffff, 2);
-        sun.position.set(50, 200, 50);
-        scene.add(sun);
+        // אור חזק מאוד מכל הכיוונים
+        scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        directionalLight.position.set(0, 500, 0);
+        scene.add(directionalLight);
 
         const loader = new GLTFLoader();
 
-        // 1. טעינת השמיים - הגדלה מאסיבית
-        loader.load('./models/unreal_engine_4_sky.glb', (gltf) => {
-            const sky = gltf.scene;
-            sky.scale.set(2000, 2000, 2000); 
-            scene.add(sky);
-        }, undefined, (err) => console.error("Sky path issue:", err));
-
-        // 2. טעינת הרצפה
+        // 1. טעינת רצפה - הגדלה מאסיבית (פי 1000)
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
-            floor.scale.set(500, 1, 500); // רצפה ענקית
+            floor.scale.set(1000, 1, 1000); 
             scene.add(floor);
         });
 
-        // 3. הגדרת גובה סופר-גבוה (100 יחידות!)
-        // זה אמור להרגיש כאילו אתה מסתכל ממטוס או בניין ענק
-        camera.position.set(0, 100, 200); 
+        // 2. טעינת שמיים - עם פקודה שתהפוך אותם שיהיו גלויים מבפנים
+        loader.load('./models/unreal_engine_4_sky.glb', (gltf) => {
+            const sky = gltf.scene;
+            sky.scale.set(5000, 5000, 5000);
+            // עוברים על כל חלקי המודל ומוודאים שהם נראים משני הצדדים
+            sky.traverse((node) => {
+                if (node.isMesh) {
+                    node.material.side = THREE.DoubleSide;
+                }
+            });
+            scene.add(sky);
+            document.getElementById('sky-status').innerText = "נטענו בהצלחה";
+        }, undefined, (err) => {
+            document.getElementById('sky-status').innerText = "שגיאה בטעינה";
+        });
+
+        // 3. גובה מצלמה - הפעם נגדיר 200 (פי 12 ממה שהיה לך!)
+        camera.position.set(0, 200, 400);
         camera.lookAt(0, 0, 0);
 
         const keys = {};
@@ -63,14 +76,15 @@
         function animate() {
             requestAnimationFrame(animate);
             
-            const speed = 2.0; // מהירות תנועה גבוהה יותר לגובה כזה
-            if (keys['KeyW'] || keys['ArrowUp']) camera.position.z -= speed;
-            if (keys['KeyS'] || keys['ArrowDown']) camera.position.z += speed;
-            if (keys['KeyA'] || keys['ArrowLeft']) camera.position.x -= speed;
-            if (keys['KeyD'] || keys['ArrowRight']) camera.position.x += speed;
+            // מהירות תנועה מותאמת לגובה
+            const speed = 5.0; 
+            if (keys['KeyW']) camera.position.z -= speed;
+            if (keys['KeyS']) camera.position.z += speed;
+            if (keys['KeyA']) camera.position.x -= speed;
+            if (keys['KeyD']) camera.position.x += speed;
 
-            // עדכון מד גובה במסך
-            document.getElementById('h-val').innerText = Math.round(camera.position.y);
+            // עדכון ה-UI
+            document.getElementById('height').innerText = Math.round(camera.position.y);
 
             renderer.render(scene, camera);
         }
