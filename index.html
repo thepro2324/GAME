@@ -1,14 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Weapon Visibility Fix</title>
+    <title>Weapon Adjuster Tool</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
-        #debug { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.5); padding: 10px; font-family: sans-serif; pointer-events: none; }
+        #control-panel {
+            position: absolute; top: 10px; right: 10px;
+            background: rgba(0,0,0,0.8); color: white; padding: 15px;
+            font-family: sans-serif; border-radius: 8px; z-index: 1000;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .control-group { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        input[type="range"] { width: 150px; }
+        span { min-width: 40px; font-family: monospace; }
     </style>
 </head>
 <body>
-    <div id="debug">סטטוס: מחפש נשק...</div>
+
+    <div id="control-panel">
+        <h3>כיוונון נשק (rife.glb)</h3>
+        <div class="control-group">גודל: <input type="range" id="scale" min="0.1" max="5" step="0.1" value="1"> <span id="v-scale">1.0</span></div>
+        <div class="control-group">ימין/שמאל (X): <input type="range" id="posX" min="-2" max="2" step="0.05" value="0"> <span id="v-posX">0.0</span></div>
+        <div class="control-group">למעלה/למטה (Y): <input type="range" id="posY" min="-2" max="2" step="0.05" value="0"> <span id="v-posY">0.0</span></div>
+        <div class="control-group">קדימה/אחורה (Z): <input type="range" id="posZ" min="-2" max="2" step="0.05" value="0"> <span id="v-posZ">0.0</span></div>
+        <div class="control-group">סיבוב: <input type="range" id="rotY" min="0" max="6.28" step="0.1" value="1.57"> <span id="v-rotY">1.57</span></div>
+        <p style="font-size: 10px; color: #aaa;">הזז את הסליידרים עד שתראה את הנשק!</p>
+    </div>
 
     <script type="importmap">
         {
@@ -23,10 +40,8 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        const debugElement = document.getElementById('debug');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
-
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -38,17 +53,16 @@
         scene.add(sun);
 
         const loader = new GLTFLoader();
-        let player, weapon, rightHandBone, clock = new THREE.Clock();
+        let player, weapon, rightHandBone;
 
-        // 1. רצפה
+        // טעינת רצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
-            const floor = gltf.scene;
-            floor.scale.set(1000, 1, 10);
-            floor.position.y = -3.5;
-            scene.add(floor);
+            gltf.scene.scale.set(1000, 1, 10);
+            gltf.scene.position.y = -3.5;
+            scene.add(gltf.scene);
         });
 
-        // 2. טעינת דמות
+        // טעינת דמות
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(1.2, 1.2, 1.2);
@@ -56,78 +70,56 @@
             scene.add(player);
 
             player.traverse((node) => {
-                const name = node.name.toLowerCase();
-                if (node.isBone && (name.includes('hand') && (name.includes('r') || name.includes('right')))) {
+                if (node.isBone && node.name.toLowerCase().includes('hand') && (node.name.toLowerCase().includes('r'))) {
                     rightHandBone = node;
                 }
             });
 
-            // 3. טעינת הנשק - rife.glb
+            // טעינת נשק
             loader.load('./models/rife.glb', (weaponGltf) => {
                 weapon = weaponGltf.scene;
-                
-                // הגדלה משמעותית כדי לוודא שרואים אותו
-                weapon.scale.set(3.0, 3.0, 3.0); 
-
-                // --- תיקון מיקום וסיבוב ---
-                // אנחנו מסובבים את הנשק ב-90 מעלות על ה-Y כדי שיפנה קדימה
-                weapon.rotation.y = Math.PI / 2; 
-                // אנחנו מזיזים אותו מעט קדימה (Z) ולמעלה (Y) כדי שלא ייבלע ביד
-                weapon.position.set(0.2, 0.1, 0.2); 
-
-                if (rightHandBone) {
-                    rightHandBone.add(weapon);
-                    debugElement.innerText = "סטטוס: נשק הוצמד ליד - בדוק אם הוא בולט";
-                } else {
-                    player.add(weapon);
-                    weapon.position.set(0, 1.8, 0.5);
-                    debugElement.innerText = "סטטוס: הוצמד לגוף (עצם יד לא זוהתה)";
-                }
+                if (rightHandBone) rightHandBone.add(weapon);
+                else player.add(weapon);
+                updateWeapon();
             });
         });
 
-        camera.position.set(0, 0, 10);
+        // פונקציה לעדכון הנשק מהלוח
+        function updateWeapon() {
+            if (!weapon) return;
+            const s = document.getElementById('scale').value;
+            const x = document.getElementById('posX').value;
+            const y = document.getElementById('posY').value;
+            const z = document.getElementById('posZ').value;
+            const ry = document.getElementById('rotY').value;
 
-        const keys = {};
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
+            weapon.scale.set(s, s, s);
+            weapon.position.set(parseFloat(x), parseFloat(y), parseFloat(z));
+            weapon.rotation.y = parseFloat(ry);
 
-        function animateProcedural(model, isMoving, time) {
-            model.traverse((node) => {
-                if (node.isBone) {
-                    const name = node.name.toLowerCase();
-                    // תנוחה קרבית - ידיים מושטות קדימה
-                    if (name.includes('rightarm')) node.rotation.x = -1.4;
-                    if (name.includes('leftarm')) {
-                        node.rotation.x = -1.2;
-                        node.rotation.z = 0.6;
-                    }
-                    if (isMoving) {
-                        const cycle = Math.sin(time * 12);
-                        if (name.includes('rightupleg')) node.rotation.x = cycle * 0.6;
-                        if (name.includes('leftupleg')) node.rotation.x = -cycle * 0.6;
-                    }
-                }
-            });
+            document.getElementById('v-scale').innerText = s;
+            document.getElementById('v-posX').innerText = x;
+            document.getElementById('v-posY').innerText = y;
+            document.getElementById('v-posZ').innerText = z;
+            document.getElementById('v-rotY').innerText = ry;
         }
+
+        // האזנה לשינויים בלוח
+        document.querySelectorAll('input').forEach(input => {
+            input.addEventListener('input', updateWeapon);
+        });
+
+        camera.position.set(0, 0, 8);
 
         function animate() {
             requestAnimationFrame(animate);
-            const time = performance.now() * 0.001;
             if (player) {
-                const speed = 0.15;
-                const isMoving = keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft'];
-                if (keys['KeyD'] || keys['ArrowRight']) {
-                    player.position.x += speed;
-                    player.rotation.y = Math.PI / 2;
-                }
-                if (keys['KeyA'] || keys['ArrowLeft']) {
-                    player.position.x -= speed;
-                    player.rotation.y = -Math.PI / 2;
-                }
-                animateProcedural(player, isMoving, time);
-                camera.position.x = player.position.x;
-                camera.lookAt(player.position.x, player.position.y + 1.8, 0);
+                player.traverse(node => {
+                    if (node.isBone) {
+                        if (node.name.toLowerCase().includes('rightarm')) node.rotation.x = -1.3;
+                        if (node.name.toLowerCase().includes('leftarm')) { node.rotation.x = -1.1; node.rotation.z = 0.5; }
+                    }
+                });
             }
             renderer.render(scene, camera);
         }
