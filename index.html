@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Scale & Weapon Fix</title>
+    <title>2D Shooter - Auto Focus Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
     </style>
@@ -20,10 +20,9 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // --- הגדרות גודל - שנה כאן אם הם עדיין גדולים/קטנים מדי ---
-        const PLAYER_SCALE = 0.05;  // הגודל של האיש
-        const WEAPON_SCALE = 0.02;  // הגודל של הנשק
-        // ------------------------------------------------------
+        // הגדרות קנה מידה (Scale) - החזרתי לערך בינוני
+        const PLAYER_SCALE = 0.3;  
+        const WEAPON_SCALE = 0.5;  
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
@@ -33,31 +32,30 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+        scene.add(new THREE.AmbientLight(0xffffff, 3)); // תאורה חזקה מאוד
         const sun = new THREE.DirectionalLight(0xffffff, 1);
         sun.position.set(5, 10, 5);
         scene.add(sun);
 
         const loader = new GLTFLoader();
-        let player, weapon, rightHandBone;
-        const clock = new THREE.Clock();
+        let player, weapon, rightHandBone, clock = new THREE.Clock();
 
         // 1. רצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
             floor.scale.set(1000, 1, 10);
-            floor.position.y = -2;
+            floor.position.y = -2.5;
             scene.add(floor);
         });
 
         // 2. טעינת הדמות
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
-            player.scale.set(PLAYER_SCALE, PLAYER_SCALE, PLAYER_SCALE); // שימוש בגודל המוקטן
-            player.position.set(0, -2, 0);
+            player.scale.set(PLAYER_SCALE, PLAYER_SCALE, PLAYER_SCALE);
+            player.position.set(0, -2.5, 0);
             scene.add(player);
 
-            // חיפוש עצם היד
+            // חיפוש יד
             player.traverse((node) => {
                 const name = node.name.toLowerCase();
                 if (node.isBone && (name.includes('hand') && (name.includes('r') || name.includes('right')))) {
@@ -68,19 +66,21 @@
             // 3. טעינת הנשק
             loader.load('./models/rifle.glb', (weaponGltf) => {
                 weapon = weaponGltf.scene;
-                weapon.scale.set(WEAPON_SCALE, WEAPON_SCALE, WEAPON_SCALE); 
+                weapon.scale.set(WEAPON_SCALE, WEAPON_SCALE, WEAPON_SCALE);
                 weapon.rotation.y = Math.PI / 2;
 
                 if (rightHandBone) {
-                    rightHandBone.add(weapon); 
-                    // איפוס מיקום הנשק שיהיה בדיוק בתוך כף היד
-                    weapon.position.set(0, 0, 0); 
+                    rightHandBone.add(weapon);
+                    weapon.position.set(0, 0, 0);
                 } else {
                     player.add(weapon);
-                    weapon.position.set(0, 1.2, 0.2); 
+                    weapon.position.set(0, 1.5, 0.5);
                 }
             });
         });
+
+        // מיקום התחלתי למצלמה
+        camera.position.set(0, 0, 8); 
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
@@ -90,19 +90,15 @@
             model.traverse((node) => {
                 if (node.isBone) {
                     const name = node.name.toLowerCase();
-                    // תנוחת החזקת נשק
-                    if (name.includes('rightarm')) node.rotation.x = -1.2; 
+                    if (name.includes('rightarm')) node.rotation.x = -1.2;
                     if (name.includes('leftarm')) {
                         node.rotation.x = -1.0;
                         node.rotation.z = 0.5;
                     }
-
                     if (isMoving) {
                         const cycle = Math.sin(time * 12);
                         if (name.includes('rightupleg')) node.rotation.x = cycle * 0.5;
                         if (name.includes('leftupleg')) node.rotation.x = -cycle * 0.5;
-                    } else if (name.includes('leg')) {
-                        node.rotation.x = 0;
                     }
                 }
             });
@@ -113,22 +109,21 @@
             const time = performance.now() * 0.001;
 
             if (player) {
-                const speed = 0.1;
-                let moving = false;
-
+                const speed = 0.12;
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
                     player.rotation.y = Math.PI / 2;
-                    moving = true;
                 }
                 if (keys['KeyA'] || keys['ArrowLeft']) {
                     player.position.x -= speed;
                     player.rotation.y = -Math.PI / 2;
-                    moving = true;
                 }
 
-                animateProcedural(player, moving, time);
+                animateProcedural(player, (keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft']), time);
+                
+                // המצלמה תמיד עוקבת אחרי השחקן ושומרת על מרחק קבוע
                 camera.position.x = player.position.x;
+                camera.lookAt(player.position.x, player.position.y + 1, 0);
             }
             renderer.render(scene, camera);
         }
