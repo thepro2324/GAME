@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D Game - Altitude 4800</title>
+    <title>3D World - Altitude 4800 Complete</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         #loading-screen {
@@ -15,7 +15,7 @@
 <body>
 
     <div id="loading-screen">
-        <h1>נוסע לגובה 4800...</h1>
+        <h1>טוען שמיים ותאורה...</h1>
         <h2 id="percent">0%</h2>
     </div>
 
@@ -41,37 +41,48 @@
         };
 
         const scene = new THREE.Scene();
-        // הגדלת טווח הראייה ל-50,000 עבור גובה 4800
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 50000);
+        // טווח ראייה עצום של 100,000 יחידות
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 100000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        // שיפור איכות הצבעים
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 2.0));
+        // --- הוספת אור ---
+        // 1. אור סביבתי שמאיר הכל בצורה שווה
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
+        scene.add(ambientLight);
+
+        // 2. אור שמש (Directional) שיוצר צללים ועומק
+        const sunLight = new THREE.DirectionalLight(0xffffff, 2.5);
+        sunLight.position.set(500, 5000, 500);
+        scene.add(sunLight);
 
         const loader = new GLTFLoader(loadingManager);
 
-        // טעינת שמיים - הגדלה מאסיבית לגובה כזה
+        // --- הוספת שמיים ---
         loader.load('./models/fly_sky_technique_experimental.glb', (gltf) => {
             const sky = gltf.scene;
-            sky.scale.set(25000, 25000, 25000);
+            sky.scale.set(40000, 40000, 40000); // שמיים ענקיים
             sky.traverse(n => { if(n.isMesh) n.material.side = THREE.DoubleSide; });
             scene.add(sky);
         });
 
-        // טעינת רצפה ענקית
+        // --- הגדלת רצפה ---
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
-            floor.scale.set(10000, 1, 10000);
+            // רצפה בגודל של 50,000 יחידות - שלא ייגמר הנוף
+            floor.scale.set(50000, 1, 50000); 
             scene.add(floor);
         });
 
         let player;
-        const moveSpeed = 10.0; // מהירות גבוהה מאוד שמתאימה לגובה כזה
+        const moveSpeed = 15.0; // מהירות מותאמת לגובה רב
 
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
-            player.position.set(0, 4800, 0); // הגובה החדש שלך
+            player.position.set(0, 4800, 0); 
             scene.add(player);
             
             camera.position.set(0, 1.7, 0); 
@@ -86,7 +97,6 @@
         function animate() {
             requestAnimationFrame(animate);
             if (player) {
-                // תנועה בסיסית עם WASD
                 if (keys['KeyW']) player.translateZ(-moveSpeed);
                 if (keys['KeyS']) player.translateZ(moveSpeed);
                 if (keys['KeyA']) player.rotation.y += 0.03;
