@@ -2,86 +2,103 @@
 <html>
 <head>
     <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+    <style>body { margin: 0; overflow: hidden; background: #000; }</style>
 </head>
-<body style="margin: 0; background: #000;">
+<body>
 <script>
     const config = {
         type: Phaser.AUTO,
-        width: 800,
-        height: 600,
+        width: window.innerWidth, // רוחב מסך מלא
+        height: window.innerHeight, // גובה מסך מלא
         physics: {
             default: 'arcade',
-            arcade: { gravity: { y: 1000 }, debug: false } // הוספנו כוח משיכה לרצפה
+            arcade: { gravity: { y: 0 }, debug: false } // נוריד כוח משיכה גלובלי ליריות
         },
         scene: { preload: preload, create: create, update: update }
     };
 
     const game = new Phaser.Game(config);
-    let player, cursors, platforms;
+    let player, cursors, bullets, enemies, score = 0, scoreText;
 
-    function preload() {
-        // בגלל שאנחנו רק בגיט-האב, ניצור גרפיקה בתוך הקוד
-    }
+    function preload() {}
 
     function create() {
-        // 1. יצירת שמיים (מלבן כחול מדורג)
-        let sky = this.add.graphics();
-        sky.fillGradientStyle(0x000033, 0x000033, 0x4488ff, 0x4488ff, 1);
-        sky.fillRect(0, 0, 800, 600);
+        const w = window.innerWidth;
+        const h = window.innerHeight;
 
-        // 2. הוספת "אור" - כוכבים קטנים ברקע
-        for (let i = 0; i < 100; i++) {
-            let x = Math.random() * 800;
-            let y = Math.random() * 400;
-            this.add.circle(x, y, 1, 0xffffff, Math.random());
+        // שמיים על כל המסך
+        let sky = this.add.graphics();
+        sky.fillGradientStyle(0x000022, 0x000022, 0x111144, 0x111144, 1);
+        sky.fillRect(0, 0, w, h);
+
+        // כוכבים
+        for (let i = 0; i < 150; i++) {
+            this.add.circle(Math.random() * w, Math.random() * h, 1, 0xffffff, Math.random());
         }
 
-        // 3. יצירת רצפה (Platform)
-        platforms = this.physics.add.staticGroup();
-        let ground = this.add.graphics();
-        ground.fillStyle(0x664422, 1); // צבע חום אדמה
-        ground.fillRect(0, 0, 800, 50);
-        
-        // הפיכת הציור לאובייקט פיזי שהשחקן יכול לעמוד עליו
-        let groundTexture = ground.generateTexture('ground', 800, 50);
-        platforms.create(400, 575, 'ground');
-        ground.destroy(); // מוחקים את הציור הזמני
+        // רצפה
+        let ground = this.add.rectangle(w/2, h - 25, w, 50, 0x664422);
+        this.physics.add.existing(ground, true);
 
-        // 4. השחקן (הריבוע הירוק)
-        player = this.physics.add.sprite(400, 450, null);
-        player.setOrigin(0.5);
-        
-        // יצירת מראה לשחקן (ריבוע ירוק עם "עיניים" כדי שיהיה חמוד)
-        let playerGraphics = this.add.graphics();
-        playerGraphics.fillStyle(0x00ff00, 1);
-        playerGraphics.fillRect(0, 0, 40, 40);
-        playerGraphics.fillStyle(0x000000, 1);
-        playerGraphics.fillRect(8, 10, 5, 5);
-        playerGraphics.fillRect(27, 10, 5, 5);
-        playerGraphics.generateTexture('playerTex', 40, 40);
-        player.setTexture('playerTex');
-        playerGraphics.destroy();
+        // שחקן
+        player = this.add.rectangle(w/2, h - 80, 50, 50, 0x00ff00);
+        this.physics.add.existing(player);
+        player.body.setCollideWorldBounds(true);
 
-        player.setCollideWorldBounds(true);
-        this.physics.add.collider(player, platforms);
+        // קבוצות ליריות ואויבים
+        bullets = this.physics.add.group();
+        enemies = this.physics.add.group();
 
-        // מקלדת
+        // יצירת אויב כל שנייה
+        this.time.addEvent({
+            delay: 1000,
+            callback: spawnEnemy,
+            callbackScope: this,
+            loop: true
+        });
+
+        // טקסט ניקוד
+        scoreText = this.add.text(20, 20, 'Score: 0', { fontSize: '32px', fill: '#fff' });
+
+        // התנגשויות
+        this.physics.add.overlap(bullets, enemies, hitEnemy, null, this);
+        this.physics.add.collider(player, ground);
+
         cursors = this.input.keyboard.createCursorKeys();
+        this.input.keyboard.on('keydown-SPACE', shoot, this);
     }
 
     function update() {
-        if (cursors.left.isDown) {
-            player.setVelocityX(-250);
-        } else if (cursors.right.isDown) {
-            player.setVelocityX(250);
-        } else {
-            player.setVelocityX(0);
-        }
+        if (cursors.left.isDown) player.body.setVelocityX(-400);
+        else if (cursors.right.isDown) player.body.setVelocityX(400);
+        else player.body.setVelocityX(0);
 
-        // קפיצה (רק אם הוא על הרצפה)
-        if (cursors.up.isDown && player.body.touching.down) {
-            player.setVelocityY(-500);
-        }
+        // ניקוי אויבים שיצאו מהמסך
+        enemies.children.iterate(function (enemy) {
+            if (enemy && enemy.y > window.innerHeight) enemy.destroy();
+        });
+    }
+
+    function shoot() {
+        let bullet = this.add.rectangle(player.x, player.y - 30, 8, 20, 0xffff00);
+        this.physics.add.existing(bullet);
+        bullets.add(bullet);
+        bullet.body.setVelocityY(-600);
+    }
+
+    function spawnEnemy() {
+        let x = Math.random() * window.innerWidth;
+        let enemy = this.add.rectangle(x, -50, 40, 40, 0xff0000);
+        this.physics.add.existing(enemy);
+        enemies.add(enemy);
+        enemy.body.setVelocityY(200 + Math.random() * 150);
+    }
+
+    function hitEnemy(bullet, enemy) {
+        bullet.destroy();
+        enemy.destroy();
+        score += 10;
+        scoreText.setText('Score: ' + score);
     }
 </script>
 </body>
