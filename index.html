@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/phaser@3.55.2/dist/phaser.min.js"></script>
+</head>
+<body style="margin: 0; background: black;">
+<script>
+    const config = {
+        type: Phaser.AUTO,
+        width: 800,
+        height: 600,
+        physics: { default: 'arcade', arcade: { gravity: { y: 0 } } },
+        scene: { preload: preload, create: create, update: update }
+    };
+
+    const game = new Phaser.Game(config);
+    let player, cursors, bullets, enemies;
+
+    function preload() {
+        // כאן טוענים תמונות (נשתמש בצורות זמניות כרגע)
+    }
+
+    function create() {
+        // יצירת השחקן
+        player = this.add.rectangle(400, 500, 40, 40, 0x00ff00);
+        this.physics.add.existing(player);
+        player.body.setCollideWorldBounds(true);
+
+        // קבוצת קליעים
+        bullets = this.physics.add.group();
+
+        // הגדרת מקלדת
+        cursors = this.input.keyboard.createCursorKeys();
+        this.input.keyboard.on('keydown-SPACE', shoot, this);
+    }
+
+    function update() {
+        if (cursors.left.isDown) player.body.setVelocityX(-300);
+        else if (cursors.right.isDown) player.body.setVelocityX(300);
+        else player.body.setVelocityX(0);
+    }
+
+    function shoot() {
+        let bullet = this.add.rectangle(player.x, player.y - 20, 5, 15, 0xffff00);
+        this.physics.add.existing(bullet);
+        bullets.add(bullet);
+        bullet.body.setVelocityY(-500);
+    }
+</script>
+</body>
+</html>
