@@ -1,17 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D First Person Game</title>
+    <title>3D First Person - High Camera & Floor</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         #instructions {
             position: absolute; top: 10px; left: 10px; color: white;
             font-family: Arial; pointer-events: none; text-shadow: 1px 1px 2px black;
+            direction: rtl;
         }
     </style>
 </head>
 <body>
-    <div id="instructions">תנועה: חצים / WASD | ירי: SPACE</div>
+    <div id="instructions">תנועה: WASD / חצים | ירי: SPACE | המצלמה הוגבהה</div>
     <script type="importmap">
         {
             "imports": {
@@ -32,36 +33,39 @@
         document.body.appendChild(renderer.domElement);
 
         // אורות
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
         scene.add(ambientLight);
-        const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
         sunLight.position.set(10, 20, 10);
         scene.add(sunLight);
 
         const loader = new GLTFLoader();
 
-        // 1. טעינת השמיים (Unreal Engine Sky)
+        // 1. טעינת השמיים (Unreal Sky)
         loader.load('./models/unreal_engine_4_sky.glb', (gltf) => {
             const sky = gltf.scene;
-            sky.scale.set(500, 500, 500); // להפוך את השמיים לענקיים
+            sky.scale.set(800, 800, 800);
             scene.add(sky);
         });
 
-        // 2. טעינת השחקן (אנחנו נשתמש במיקום שלו עבור המצלמה)
+        // 2. טעינת מודל הרצפה החדש שלך
+        loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
+            const floor = gltf.scene;
+            floor.scale.set(50, 1, 50); // מגדילים את הרצפה שתכסה שטח גדול
+            floor.position.y = 0;
+            scene.add(floor);
+        });
+
+        // 3. טעינת השחקן (נסתר במצב גוף ראשון)
         let player;
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
+            player.visible = false;
             scene.add(player);
-            // במבט גוף ראשון אנחנו מסתירים את הדמות של עצמנו
-            player.visible = false; 
         });
 
-        // רצפה זמנית
-        const grid = new THREE.GridHelper(200, 100, 0x444444, 0x222222);
-        scene.add(grid);
-
-        // מיקום התחלתי למצלמה (גובה העיניים)
-        camera.position.y = 1.7; 
+        // הגבהת המצלמה - שיניתי מ-1.7 ל-2.5 כדי שתהיה גבוהה יותר
+        camera.position.set(0, 2.5, 10); 
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
@@ -71,11 +75,10 @@
         const bullets = [];
         window.addEventListener('keydown', e => {
             if (e.code === 'Space') {
-                const bGeo = new THREE.SphereGeometry(0.1);
+                const bGeo = new THREE.SphereGeometry(0.15);
                 const bMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
                 const bullet = new THREE.Mesh(bGeo, bMat);
                 bullet.position.copy(camera.position);
-                // כיוון הירי הוא לאן שהמצלמה מסתכלת
                 const direction = new THREE.Vector3();
                 camera.getWorldDirection(direction);
                 bullet.velocity = direction.multiplyScalar(1.5);
@@ -87,17 +90,16 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            // תנועת גוף ראשון
-            const speed = 0.15;
+            const speed = 0.2; // מהירות תנועה
             if (keys['ArrowUp'] || keys['KeyW']) camera.position.z -= speed;
             if (keys['ArrowDown'] || keys['KeyS']) camera.position.z += speed;
             if (keys['ArrowLeft'] || keys['KeyA']) camera.position.x -= speed;
             if (keys['ArrowRight'] || keys['KeyD']) camera.position.x += speed;
 
-            // עדכון יריות
+            // עדכון כדורים
             bullets.forEach((b, i) => {
                 b.position.add(b.velocity);
-                if (b.position.length() > 100) {
+                if (b.position.length() > 200) {
                     scene.remove(b);
                     bullets.splice(i, 1);
                 }
@@ -105,7 +107,6 @@
 
             renderer.render(scene, camera);
         }
-
         animate();
 
         window.addEventListener('resize', () => {
