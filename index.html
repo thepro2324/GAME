@@ -1,14 +1,52 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D REBOOT</title>
+    <title>3D Game - Loading Screen</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000033; }
-        #stats { position: absolute; top: 10px; left: 10px; color: white; background: red; padding: 10px; font-size: 20px; z-index: 100; }
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        
+        /* עיצוב מסך הטעינה */
+        #loading-screen {
+            position: fixed;
+            width: 100%;
+            height: 100%;
+            background: #111;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #00ff00;
+            font-family: 'Courier New', Courier, monospace;
+            direction: rtl;
+        }
+
+        #progress-container {
+            width: 300px;
+            height: 30px;
+            border: 2px solid #00ff00;
+            margin-top: 20px;
+            border-radius: 15px;
+            overflow: hidden;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: #00ff00;
+            box-shadow: 0 0 15px #00ff00;
+        }
     </style>
 </head>
 <body>
-    <div id="stats">גרסה: 5 | גובה: <span id="h">0</span></div>
+
+    <div id="loading-screen">
+        <h1>טוען מודלים...</h1>
+        <div id="progress-container">
+            <div id="progress-bar"></div>
+        </div>
+        <h2 id="progress-text">0%</h2>
+    </div>
 
     <script type="importmap">
         {
@@ -23,48 +61,69 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+        // מנהל טעינה שיודע לחשב אחוזים
+        const loadingManager = new THREE.LoadingManager();
+        const pBar = document.getElementById('progress-bar');
+        const pText = document.getElementById('progress-text');
+        const lScreen = document.getElementById('loading-screen');
+
+        loadingManager.onProgress = (url, loaded, total) => {
+            const percent = (loaded / total) * 100;
+            pBar.style.width = percent + '%';
+            pText.innerText = Math.round(percent) + '%';
+        };
+
+        loadingManager.onLoad = () => {
+            // כשהטעינה מסתיימת, נחכה שניה ונעלים את המסך
+            setTimeout(() => {
+                lScreen.style.opacity = '0';
+                lScreen.style.transition = 'opacity 1s ease';
+                setTimeout(() => lScreen.style.display = 'none', 1000);
+            }, 500);
+        };
+
+        // יצירת עולם
         const scene = new THREE.Scene();
-        // צבע רקע כחול בהיר כדי שנדע שהשמיים עובדים גם בלי קובץ
-        scene.background = new THREE.Color(0x87ceeb); 
+        scene.background = new THREE.Color(0x000022);
 
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
-        const renderer = new THREE.WebGLRenderer();
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 2));
+        scene.add(new THREE.AmbientLight(0xffffff, 1.5));
 
-        const loader = new GLTFLoader();
+        const loader = new GLTFLoader(loadingManager);
 
-        // גובה מצלמה מטורף - 500! (כמו מטוס)
-        camera.position.set(0, 500, 1000);
-        camera.lookAt(0, 0, 0);
-
-        // רצפה ענקית (ירוקה כדי שנזהה אותה מיד)
-        const groundGeo = new THREE.PlaneGeometry(10000, 10000);
-        const groundMat = new THREE.MeshStandardMaterial({ color: 0x228b22 });
-        const ground = new THREE.Mesh(groundGeo, groundMat);
-        ground.rotation.x = -Math.PI / 2;
-        scene.add(ground);
-
-        // ניסיון טעינת המודלים שלך
+        // טעינת שמיים
         loader.load('./models/unreal_engine_4_sky.glb', (gltf) => {
-            gltf.scene.scale.set(5000, 5000, 5000);
-            scene.add(gltf.scene);
+            const sky = gltf.scene;
+            sky.scale.set(5000, 5000, 5000);
+            scene.add(sky);
         });
 
+        // טעינת רצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
-            gltf.scene.scale.set(200, 1, 200);
-            gltf.scene.position.y = 1; // קצת מעל הרצפה הירוקה
-            scene.add(gltf.scene);
+            const floor = gltf.scene;
+            floor.scale.set(1000, 1, 1000);
+            scene.add(floor);
         });
+
+        // גובה מצלמה כפול 6 (מאוד גבוה)
+        camera.position.set(0, 300, 600);
+        camera.lookAt(0, 0, 0);
 
         function animate() {
             requestAnimationFrame(animate);
-            document.getElementById('h').innerText = Math.round(camera.position.y);
             renderer.render(scene, camera);
         }
         animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
