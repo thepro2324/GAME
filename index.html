@@ -1,17 +1,19 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D World - 2D Edition</title>
+    <title>2D Platformer - Animated</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
-        #instructions {
-            position: absolute; top: 10px; left: 10px; color: white;
-            font-family: Arial; text-shadow: 1px 1px 2px black; direction: rtl;
+        #loading-screen {
+            position: fixed; width: 100%; height: 100%; background: #111;
+            z-index: 1000; display: flex; justify-content: center; 
+            align-items: center; color: #00ffcc; font-family: sans-serif;
         }
     </style>
 </head>
 <body>
-    <div id="instructions">תנועה: חצים / WASD (ימינה ושמאלה בלבד)</div>
+
+    <div id="loading-screen"><h1>טוען אנימציות...</h1></div>
 
     <script type="importmap">
         {
@@ -27,79 +29,101 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         const scene = new THREE.Scene();
-        
-        // מצלמה אורתוגרפית (טובה ל-2D) או פרספקטיבית מרחוק
-        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10000);
+        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // תאורה חזקה
         scene.add(new THREE.AmbientLight(0xffffff, 2));
 
         const loader = new GLTFLoader();
+        let player, mixer, walkAction, idleAction;
+        const clock = new THREE.Clock(); // נחוץ לעדכון האנימציה
 
-        // 1. שמיים - נשים אותם רחוק ברקע
-        loader.load('./models/fly_sky_technique_experimental.glb', (gltf) => {
-            const sky = gltf.scene;
-            sky.scale.set(5000, 5000, 5000);
-            sky.position.z = -500; // דוחפים אותם אחורה
-            scene.add(sky);
-        });
-
-        // 2. רצפה - נהפוך אותה ל"פס" ארוך מלמטה
+        // טעינת רצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
-            floor.scale.set(1000, 1, 10); // ארוכה מאוד אבל לא עמוקה
-            floor.position.y = -2;
+            floor.scale.set(2000, 1, 20);
+            floor.position.y = -1.5;
             scene.add(floor);
         });
 
-        // 3. שחקן (החיזר או האיש בחליפה)
-        let player;
-        loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
-            player = gltf.scene;
-            player.scale.set(1, 1, 1);
-            player.position.set(0, -2, 0);
-            scene.add(player);
+        // טעינת שמיים
+        loader.load('./models/fly_sky_technique_experimental.glb', (gltf) => {
+            const sky = gltf.scene;
+            sky.scale.set(4000, 4000, 4000);
+            sky.position.z = -100;
+            scene.add(sky);
         });
 
-        // מיקום המצלמה - מהצד (ציר Z) מסתכלת למרכז (0,0,0)
-        camera.position.set(0, 2, 15);
-        camera.lookAt(0, 2, 0);
+        // טעינת הדמות עם אנימציות
+        loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
+            player = gltf.scene;
+            
+            // הקטנת הדמות
+            player.scale.set(0.6, 0.6, 0.6); 
+            player.position.y = -1.5;
+            scene.add(player);
+
+            // הגדרת האנימציות
+            mixer = new THREE.AnimationMixer(player);
+            const clips = gltf.animations;
+            
+            // בדרך כלל במודלים האלו: clips[0] זה IDLE, clips[1] זה WALK
+            // אם האנימציה לא עובדת, נסה להחליף את האינדקסים
+            idleAction = mixer.clipAction(clips[0]);
+            walkAction = mixer.clipAction(clips[1] || clips[0]); // גיבוי אם אין הליכה
+
+            idleAction.play();
+            document.getElementById('loading-screen').style.display = 'none';
+        });
+
+        camera.position.set(0, 1, 10);
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
+        let isWalking = false;
+
         function animate() {
             requestAnimationFrame(animate);
+            const delta = clock.getDelta(); // הזמן שעבר בין הפריימים
+
+            if (mixer) mixer.update(delta); // עדכון האנימציה
 
             if (player) {
-                const speed = 0.2;
-                // תנועה רק ימינה ושמאלה (ציר X)
-                if (keys['ArrowRight'] || keys['KeyD']) {
+                const speed = 0.12;
+                let moving = false;
+
+                if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
-                    player.rotation.y = Math.PI / 2; // פונה ימינה
+                    player.rotation.y = Math.PI / 2;
+                    moving = true;
                 }
-                if (keys['ArrowLeft'] || keys['KeyA']) {
+                if (keys['KeyA'] || keys['ArrowLeft']) {
                     player.position.x -= speed;
-                    player.rotation.y = -Math.PI / 2; // פונה שמאלה
+                    player.rotation.y = -Math.PI / 2;
+                    moving = true;
                 }
 
-                // המצלמה עוקבת אחרי השחקן רק בציר ה-X
-                camera.position.x = player.position.x;
+                // לוגיקת החלפת אנימציות
+                if (moving && !isWalking) {
+                    idleAction.stop();
+                    walkAction.reset().fadeIn(0.2).play();
+                    isWalking = true;
+                } else if (!moving && isWalking) {
+                    walkAction.fadeOut(0.2);
+                    idleAction.reset().fadeIn(0.2).play();
+                    isWalking = false;
+                }
+
+                camera.position.x = player.position.x; // המצלמה עוקבת
             }
 
             renderer.render(scene, camera);
         }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
