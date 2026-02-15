@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D First Person - Camera on Head</title>
+    <title>3D First Person - High Position</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         #loading-screen {
@@ -15,7 +15,7 @@
 <body>
 
     <div id="loading-screen">
-        <h1 id="status">טוען את הדמות והשמיים...</h1>
+        <h1 id="status">טוען עולם גבוה...</h1>
         <h2 id="percent">0%</h2>
     </div>
 
@@ -41,7 +41,7 @@
         };
 
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 20000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
@@ -50,34 +50,34 @@
 
         const loader = new GLTFLoader(loadingManager);
 
-        // 1. טעינת השמיים החדשים
+        // 1. טעינת השמיים
         loader.load('./models/fly_sky_technique_experimental.glb', (gltf) => {
             const sky = gltf.scene;
-            sky.scale.set(7000, 7000, 7000);
+            sky.scale.set(8000, 8000, 8000);
             sky.traverse(n => { if(n.isMesh) n.material.side = THREE.DoubleSide; });
             scene.add(sky);
         });
 
         // 2. טעינת הרצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
-            gltf.scene.scale.set(1000, 1, 1000);
+            gltf.scene.scale.set(2000, 1, 2000);
             scene.add(gltf.scene);
         });
 
-        // 3. טעינת הדמות וחיבור המצלמה לראש שלה
+        // 3. טעינת השחקן והגבהתו
         let player;
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
+            
+            // --- כאן אנחנו קובעים את הגובה של הדמות מעל הרצפה ---
+            player.position.y = 20; // שנה את זה ל-50 או 100 אם אתה רוצה להיות עוד יותר גבוה
+            
             scene.add(player);
 
-            // מיקום המצלמה בתוך "הראש" של הדמות
-            // הערה: 1.7 זה בערך גובה עיניים. אם זה גבוה/נמוך מדי, תשנה את המספר הזה
+            // המצלמה בתוך הראש של הדמות (1.7 מעל מרכז הדמות)
             camera.position.set(0, 1.7, 0); 
-            
-            // חיבור המצלמה לדמות כך שהיא תזוז איתה
             player.add(camera);
             
-            // אנחנו מסתירים את המודל של עצמנו כדי שלא נראה את פנים הראש
             player.visible = false; 
         });
 
@@ -89,7 +89,7 @@
             requestAnimationFrame(animate);
             
             if (player) {
-                const speed = 0.15;
+                const speed = 0.3; // הגברתי קצת את המהירות כי אתה גבוה
                 if (keys['KeyW']) player.translateZ(-speed);
                 if (keys['KeyS']) player.translateZ(speed);
                 if (keys['KeyA']) player.rotation.y += 0.03;
@@ -99,6 +99,12 @@
             renderer.render(scene, camera);
         }
         animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
