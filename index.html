@@ -1,10 +1,35 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Animation Force Fix</title>
-    <style>body { margin: 0; overflow: hidden; background-color: #87CEEB; }</style>
+    <title>Tactical Shooter - With Loading Screen</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #000; font-family: sans-serif; }
+        
+        /* סגנון מסך הטעינה */
+        #loading-screen {
+            position: absolute; width: 100%; height: 100%;
+            background: #111; color: white;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            z-index: 9999; transition: opacity 0.5s;
+        }
+        .loader {
+            border: 5px solid #333; border-top: 5px solid #ff4444;
+            border-radius: 50%; width: 50px; height: 50px;
+            animation: spin 1s linear infinite; margin-bottom: 15px;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        #status { font-size: 14px; color: #888; }
+    </style>
 </head>
 <body>
+
+    <div id="loading-screen">
+        <div class="loader"></div>
+        <div id="progress">טוען משאבים: 0%</div>
+        <div id="status">מכין את האנימציות...</div>
+    </div>
+
     <script type="importmap">
         {
             "imports": {
@@ -19,6 +44,29 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
+        // --- ניהול טעינה ---
+        const loadingScreen = document.getElementById('loading-screen');
+        const progressText = document.getElementById('progress');
+        
+        const manager = new THREE.LoadingManager();
+        
+        manager.onProgress = (url, itemsLoaded, itemsTotal) => {
+            const progress = Math.round((itemsLoaded / itemsTotal) * 100);
+            progressText.innerText = `טוען משאבים: ${progress}%`;
+        };
+
+        manager.onLoad = () => {
+            console.log('הכל נטען בהצלחה!');
+            loadingScreen.style.opacity = '0';
+            setTimeout(() => loadingScreen.style.display = 'none', 500);
+        };
+
+        manager.onError = (url) => {
+            console.error('שגיאה בטעינת קובץ: ' + url);
+            document.getElementById('status').innerText = 'שגיאה בטעינת הקבצים!';
+        };
+
+        // --- הגדרות סצנה ---
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -37,10 +85,10 @@
         const clock = new THREE.Clock();
         const keys = {};
 
-        const gltfLoader = new GLTFLoader();
-        const fbxLoader = new FBXLoader();
+        const gltfLoader = new GLTFLoader(manager);
+        const fbxLoader = new FBXLoader(manager);
 
-        // 1. טעינת רצפה
+        // טעינת רצפה
         gltfLoader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
             floor.scale.set(1000, 1, 10);
@@ -48,14 +96,13 @@
             scene.add(floor);
         });
 
-        // 2. טעינת דמות
+        // טעינת דמות
         gltfLoader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(1.2, 1.2, 1.2);
             player.position.set(0, -3.5, 0);
             scene.add(player);
 
-            // יצירת המיקסר
             mixer = new THREE.AnimationMixer(player);
 
             player.traverse(node => {
@@ -75,27 +122,17 @@
                 }
             });
 
-            // 3. טעינת האנימציה - שיטה חסינה (Force Play)
+            // טעינת האנימציה
             fbxLoader.load('./models/Firing Rifle (2).fbx', (animFbx) => {
-                if (animFbx.animations && animFbx.animations.length > 0) {
+                if (animFbx.animations.length > 0) {
                     const clip = animFbx.animations[0];
-                    
-                    // המרת האנימציה כך שתתאים לשלד של ה-GLB
+                    // תיקון שמות עצמות אם הגיעו מ-Mixamo
+                    clip.tracks.forEach(track => {
+                        track.name = track.name.replace('mixamorig_', '');
+                    });
                     const action = mixer.clipAction(clip);
-                    
-                    // הגדרות חשובות להרצה
-                    action.setEffectiveWeight(1.0);
-                    action.enabled = true;
                     action.play();
-                    
-                    console.log("Animation Loaded Successfully!");
-                } else {
-                    console.warn("No animations found in FBX file.");
                 }
-            }, (xhr) => {
-                console.log((xhr.loaded / xhr.total * 100) + '% loaded');
-            }, (error) => {
-                console.error("Error loading FBX:", error);
             });
         });
 
@@ -107,7 +144,6 @@
             const delta = clock.getDelta();
 
             if (player) {
-                // תנועה
                 const speed = 0.12;
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
@@ -118,10 +154,7 @@
                     player.rotation.y = -Math.PI / 2;
                 }
 
-                // עדכון המיקסר (זה מה שמריץ את האנימציה בפועל)
-                if (mixer) {
-                    mixer.update(delta);
-                }
+                if (mixer) mixer.update(delta);
 
                 camera.position.x = player.position.x;
                 camera.lookAt(player.position.x, player.position.y + 1.8, 0);
@@ -129,6 +162,12 @@
             renderer.render(scene, camera);
         }
         animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
