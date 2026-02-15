@@ -1,15 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Ultimate Fix</title>
+    <title>2D Shooter - Fixed Legs & Arms</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
-        #debug-info { position: absolute; top: 10px; left: 10px; color: white; background: rgba(0,0,0,0.7); padding: 10px; font-family: monospace; pointer-events: none; }
     </style>
 </head>
 <body>
-    <div id="debug-info">מחפש עצמות...</div>
-
     <script type="importmap">
         {
             "imports": {
@@ -37,7 +34,6 @@
 
         const loader = new GLTFLoader();
         let player, weapon, rightHandBone;
-        let bonesList = [];
 
         // 1. רצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
@@ -46,7 +42,7 @@
             scene.add(gltf.scene);
         });
 
-        // 2. דמות עם זיהוי עצמות משופר
+        // 2. דמות
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(1.2, 1.2, 1.2);
@@ -55,50 +51,62 @@
 
             player.traverse((node) => {
                 if (node.isBone) {
-                    bonesList.push(node.name);
                     const name = node.name.toLowerCase();
-                    // חיפוש גמיש מאוד ליד ימין
-                    if (name.includes('hand') && (name.includes('r') || name.includes('right')) && !name.includes('forearm')) {
+                    // איתור כף יד ימין לנשק
+                    if (name.includes('hand') && name.includes('r')) {
                         rightHandBone = node;
                     }
                 }
             });
-            document.getElementById('debug-info').innerText = "עצמות נמצאו: " + bonesList.length;
 
-            // 3. טעינת הנשק
+            // 3. נשק
             loader.load('./models/m4_carbine_rifle.glb', (weaponGltf) => {
                 weapon = weaponGltf.scene;
-                weapon.scale.set(0.6, 0.6, 0.6); // גודל התחלתי הגיוני
-                
+                weapon.scale.set(0.6, 0.6, 0.6);
                 if (rightHandBone) {
                     rightHandBone.add(weapon);
                     weapon.position.set(0, 0, 0);
-                } else {
-                    player.add(weapon);
-                    weapon.position.set(0, 1.5, 0.5);
+                    weapon.rotation.y = Math.PI / 2;
                 }
             });
         });
 
-        // פונקציית האנימציה - הפעם עם שמות גנריים ושימוש ב-Quaternion ליתר ביטחון
-        function fixPose(model) {
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
+
+        // פונקציית אנימציה ממוקדת - לא נוגעת ברגליים אלא אם יש תנועה
+        function applyPose(model, isMoving, time) {
             model.traverse((node) => {
                 if (node.isBone) {
                     const n = node.name.toLowerCase();
 
-                    // זרוע עליונה (מוריד את הידיים)
-                    if (n.includes('arm') && (n.includes('upper') || !n.includes('fore'))) {
-                        if (n.includes('r')) {
-                            node.rotation.set(-1.5, 0, 0.2); // ימין
-                        } else if (n.includes('l')) {
-                            node.rotation.set(-1.5, 0, -0.2); // שמאל
-                        }
+                    // --- טיפול בידיים בלבד ---
+                    // זרוע ימין
+                    if (n.includes('rightarm') || n.includes('upperarm_r')) {
+                        node.rotation.x = -1.5;
+                        node.rotation.z = 0.2;
                     }
-                    
-                    // זרוע תחתונה (מיישר קדימה)
-                    if (n.includes('forearm') || n.includes('lowerarm')) {
-                        if (n.includes('r')) node.rotation.y = 0.5;
-                        if (n.includes('l')) node.rotation.y = -0.5;
+                    // זרוע שמאל
+                    if (n.includes('leftarm') || n.includes('upperarm_l')) {
+                        node.rotation.x = -1.5;
+                        node.rotation.z = -0.2;
+                    }
+                    // מרפקים
+                    if (n.includes('forearm')) {
+                        if (n.includes('r')) node.rotation.y = 0.4;
+                        if (n.includes('l')) node.rotation.y = -0.4;
+                    }
+
+                    // --- טיפול ברגליים בלבד ---
+                    if (n.includes('upleg')) {
+                        if (isMoving) {
+                            const cycle = Math.sin(time * 12);
+                            if (n.includes('r')) node.rotation.x = cycle * 0.6;
+                            if (n.includes('l')) node.rotation.x = -cycle * 0.6;
+                        } else {
+                            node.rotation.x = 0; // עמידה ישרה כשלא זזים
+                        }
                     }
                 }
             });
@@ -106,17 +114,13 @@
 
         camera.position.set(0, 0, 10);
 
-        const keys = {};
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
         function animate() {
             requestAnimationFrame(animate);
             const time = performance.now() * 0.001;
 
             if (player) {
                 const speed = 0.15;
-                const moving = keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft'];
+                const isMoving = keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft'];
 
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
@@ -127,18 +131,8 @@
                     player.rotation.y = -Math.PI / 2;
                 }
 
-                // החלת התנוחה בכל פריים כדי למנוע חזרה למצב המקורי
-                fixPose(player);
-                
-                // אנימציית רגליים בסיסית
-                if (moving) {
-                    player.traverse(n => {
-                        if (n.isBone && n.name.toLowerCase().includes('leg')) {
-                            if (n.name.toLowerCase().includes('r')) n.rotation.x = Math.sin(time * 12) * 0.5;
-                            if (n.name.toLowerCase().includes('l')) n.rotation.x = -Math.sin(time * 12) * 0.5;
-                        }
-                    });
-                }
+                // הפעלת האנימציה המשולבת
+                applyPose(player, isMoving, time);
 
                 camera.position.x = player.position.x;
                 camera.lookAt(player.position.x, player.position.y + 1.8, 0);
