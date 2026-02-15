@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Auto Focus Fix</title>
+    <title>2D Shooter - Scaled Up</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
     </style>
@@ -20,9 +20,10 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // הגדרות קנה מידה (Scale) - החזרתי לערך בינוני
-        const PLAYER_SCALE = 0.3;  
-        const WEAPON_SCALE = 0.5;  
+        // --- הגדרות גודל חדשות (מוגדל) ---
+        const PLAYER_SCALE = 1.0;  
+        const WEAPON_SCALE = 1.2;  
+        // ---------------------------------
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
@@ -32,7 +33,7 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 3)); // תאורה חזקה מאוד
+        scene.add(new THREE.AmbientLight(0xffffff, 3));
         const sun = new THREE.DirectionalLight(0xffffff, 1);
         sun.position.set(5, 10, 5);
         scene.add(sun);
@@ -44,7 +45,7 @@
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
             floor.scale.set(1000, 1, 10);
-            floor.position.y = -2.5;
+            floor.position.y = -3; // הורדנו מעט את הרצפה בגלל הגודל
             scene.add(floor);
         });
 
@@ -52,10 +53,9 @@
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(PLAYER_SCALE, PLAYER_SCALE, PLAYER_SCALE);
-            player.position.set(0, -2.5, 0);
+            player.position.set(0, -3, 0);
             scene.add(player);
 
-            // חיפוש יד
             player.traverse((node) => {
                 const name = node.name.toLowerCase();
                 if (node.isBone && (name.includes('hand') && (name.includes('r') || name.includes('right')))) {
@@ -79,8 +79,7 @@
             });
         });
 
-        // מיקום התחלתי למצלמה
-        camera.position.set(0, 0, 8); 
+        camera.position.set(0, 0, 10); // הרחקנו מעט את המצלמה כדי לראות את הדמות הגדולה
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
@@ -109,7 +108,7 @@
             const time = performance.now() * 0.001;
 
             if (player) {
-                const speed = 0.12;
+                const speed = 0.15;
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
                     player.rotation.y = Math.PI / 2;
@@ -121,9 +120,8 @@
 
                 animateProcedural(player, (keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft']), time);
                 
-                // המצלמה תמיד עוקבת אחרי השחקן ושומרת על מרחק קבוע
                 camera.position.x = player.position.x;
-                camera.lookAt(player.position.x, player.position.y + 1, 0);
+                camera.lookAt(player.position.x, player.position.y + 1.5, 0);
             }
             renderer.render(scene, camera);
         }
