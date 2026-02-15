@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Fixed Legs & Arms</title>
+    <title>2D Shooter - Classic Legs Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
     </style>
@@ -50,22 +50,18 @@
             scene.add(player);
 
             player.traverse((node) => {
-                if (node.isBone) {
-                    const name = node.name.toLowerCase();
-                    // איתור כף יד ימין לנשק
-                    if (name.includes('hand') && name.includes('r')) {
-                        rightHandBone = node;
-                    }
+                if (node.isBone && node.name.toLowerCase().includes('hand') && node.name.toLowerCase().includes('r')) {
+                    rightHandBone = node;
                 }
             });
 
-            // 3. נשק
+            // 3. נשק M4
             loader.load('./models/m4_carbine_rifle.glb', (weaponGltf) => {
                 weapon = weaponGltf.scene;
                 weapon.scale.set(0.6, 0.6, 0.6);
                 if (rightHandBone) {
                     rightHandBone.add(weapon);
-                    weapon.position.set(0, 0, 0);
+                    weapon.position.set(0.1, 0, 0.1); // מיקום התחלתי בסיסי
                     weapon.rotation.y = Math.PI / 2;
                 }
             });
@@ -75,38 +71,31 @@
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
-        // פונקציית אנימציה ממוקדת - לא נוגעת ברגליים אלא אם יש תנועה
-        function applyPose(model, isMoving, time) {
+        // הפונקציה המקורית שסידרנו - עכשיו נוגעת ברגליים רק כשצריך (בדיוק כמו פעם)
+        function animateProcedural(model, isMoving, time) {
             model.traverse((node) => {
                 if (node.isBone) {
                     const n = node.name.toLowerCase();
 
-                    // --- טיפול בידיים בלבד ---
-                    // זרוע ימין
+                    // --- תנוחת ידיים (חדש) ---
                     if (n.includes('rightarm') || n.includes('upperarm_r')) {
-                        node.rotation.x = -1.5;
-                        node.rotation.z = 0.2;
+                        node.rotation.x = -1.5; 
                     }
-                    // זרוע שמאל
                     if (n.includes('leftarm') || n.includes('upperarm_l')) {
-                        node.rotation.x = -1.5;
-                        node.rotation.z = -0.2;
-                    }
-                    // מרפקים
-                    if (n.includes('forearm')) {
-                        if (n.includes('r')) node.rotation.y = 0.4;
-                        if (n.includes('l')) node.rotation.y = -0.4;
+                        node.rotation.x = -1.4; 
                     }
 
-                    // --- טיפול ברגליים בלבד ---
-                    if (n.includes('upleg')) {
-                        if (isMoving) {
-                            const cycle = Math.sin(time * 12);
-                            if (n.includes('r')) node.rotation.x = cycle * 0.6;
-                            if (n.includes('l')) node.rotation.x = -cycle * 0.6;
-                        } else {
-                            node.rotation.x = 0; // עמידה ישרה כשלא זזים
+                    // --- אנימציית רגליים (החזרתי למצב "כמו פעם") ---
+                    if (isMoving) {
+                        const cycle = Math.sin(time * 12);
+                        // מחפש את העצמות של הרגליים לפי השם הנכון
+                        if (n.includes('upleg') || n.includes('thigh')) {
+                            if (n.includes('r') || n.includes('right')) node.rotation.x = cycle * 0.5;
+                            if (n.includes('l') || n.includes('left')) node.rotation.x = -cycle * 0.5;
                         }
+                    } else {
+                        // כשהוא עוצר, הרגליים חוזרות למצב טבעי בלי לאפס אותן בכוח
+                        if (n.includes('leg')) node.rotation.x = 0;
                     }
                 }
             });
@@ -131,8 +120,7 @@
                     player.rotation.y = -Math.PI / 2;
                 }
 
-                // הפעלת האנימציה המשולבת
-                applyPose(player, isMoving, time);
+                animateProcedural(player, isMoving, time);
 
                 camera.position.x = player.position.x;
                 camera.lookAt(player.position.x, player.position.y + 1.8, 0);
