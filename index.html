@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Animation Fix</title>
+    <title>2D Shooter - Fixed Animation</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        #instructions {
+            position: absolute; top: 10px; width: 100%; text-align: center;
+            color: white; font-family: sans-serif; text-shadow: 2px 2px 4px #000;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
+    <div id="instructions">השתמש ב-A ו-D לתנועה | האנימציה נעולה למקום</div>
 
     <script type="importmap">
         {
@@ -23,26 +29,26 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB); // שמיים כחולים נקיים
+        scene.background = new THREE.Color(0x87CEEB);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.body.appendChild(renderer.domElement);
 
-        // אורות חזקים כדי לראות את הדמות בברור
-        const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
-        scene.add(ambientLight);
-        const sunLight = new THREE.DirectionalLight(0xffffff, 1);
-        sunLight.position.set(5, 10, 7.5);
-        scene.add(sunLight);
+        // תאורה חזקה כדי שהדמות לא תהיה שחורה
+        scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+        const sun = new THREE.DirectionalLight(0xffffff, 1);
+        sun.position.set(5, 10, 5);
+        scene.add(sun);
 
         const fbxLoader = new FBXLoader();
         const gltfLoader = new GLTFLoader();
-        let player, mixer, action;
+        let player, mixer, animationAction;
         const clock = new THREE.Clock();
 
-        // טעינת רצפה
+        // 1. טעינת רצפה (GLB)
         gltfLoader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
             floor.scale.set(2000, 1, 20);
@@ -50,24 +56,22 @@
             scene.add(floor);
         });
 
-        // טעינת האנימציה (FBX)
+        // 2. טעינת הדמות עם האנימציה (FBX)
         fbxLoader.load('./models/Firing Rifle.fbx', (object) => {
             player = object;
             
-            // שינוי גודל (Scale) - התאמה ל-FBX מ-Mixamo
+            // הגדרת גודל ומיקום
             player.scale.set(0.015, 0.015, 0.015); 
-            player.position.y = -2;
+            player.position.set(0, -2, 0);
             scene.add(player);
 
             // הפעלת האנימציה
             mixer = new THREE.AnimationMixer(player);
             if (player.animations.length > 0) {
-                action = mixer.clipAction(player.animations[0]);
-                action.play();
+                animationAction = mixer.clipAction(player.animations[0]);
+                animationAction.play();
             }
         });
-
-        camera.position.set(0, 1, 10);
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
@@ -80,31 +84,45 @@
             if (mixer) mixer.update(delta);
 
             if (player) {
-                // --- התיקון הקריטי: מניעת תנועת השורש (Root Motion) ---
-                // אנחנו מאפסים את המיקום הפנימי של העצם הראשי של המודל
+                // --- מנגנון נעילת ה-Root Motion ---
+                // אנחנו רצים על כל העצמות ומאפסים את המיקום היחסי שלהן בכל פריים
                 player.traverse((child) => {
-                    if (child.isBone && child.name === "MixamoRig_Hips") { // או שם העצם הראשי
-                        child.position.x = 0;
-                        child.position.z = 0;
+                    if (child.isBone) {
+                        // מאפסים תנועה אופקית של האגן (Hips) שגורמת לדמות "לברוח"
+                        if (child.name.includes("Hips") || child.name.includes("Root")) {
+                            child.position.x = 0;
+                            child.position.z = 0;
+                        }
                     }
                 });
 
-                const speed = 0.12;
+                const speed = 0.15;
+                let moving = false;
+
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
-                    player.rotation.y = Math.PI / 2;
+                    player.rotation.y = Math.PI / 2; // פונה ימינה
+                    moving = true;
                 }
                 if (keys['KeyA'] || keys['ArrowLeft']) {
                     player.position.x -= speed;
-                    player.rotation.y = -Math.PI / 2;
+                    player.rotation.y = -Math.PI / 2; // פונה שמאלה
+                    moving = true;
                 }
 
+                // מצלמה עוקבת
                 camera.position.x = player.position.x;
             }
 
             renderer.render(scene, camera);
         }
         animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
