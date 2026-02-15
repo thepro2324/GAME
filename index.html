@@ -1,163 +1,97 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Tactical Shooter - Pro Debug Version</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #000; font-family: 'Segoe UI', sans-serif; }
-        #loading-screen {
-            position: absolute; width: 100%; height: 100%;
-            background: #111; color: white;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 9999;
-        }
-        .loader {
-            border: 4px solid #333; border-top: 4px solid #00ff88;
-            border-radius: 50%; width: 40px; height: 40px;
-            animation: spin 1s linear infinite; margin-bottom: 20px;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #debug-log {
-            position: absolute; bottom: 10px; left: 10px;
-            color: #00ff88; background: rgba(0,0,0,0.7);
-            padding: 10px; font-size: 12px; pointer-events: none;
-            max-height: 200px; overflow-y: auto; border-radius: 5px;
-        }
-    </style>
-</head>
-<body>
+<script type="module">
+    import * as THREE from 'three';
+    import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
-    <div id="loading-screen">
-        <div class="loader"></div>
-        <div id="progress">טוען נכסים: 0%</div>
-    </div>
-    
-    <div id="debug-log">Log: Initializing...</div>
+    // הגדרות ודיבאג
+    const debug = (msg) => {
+        const el = document.getElementById('debug-log');
+        el.innerHTML += `<br>> ${msg}`;
+        console.log(msg);
+    };
 
-    <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
-    </script>
+    const CONFIG = {
+        player: './models/indian_man_in_suit%20(1).glb',
+        anim: './models/Firing Rifle(2).fbx',
+        speed: 0.12
+    };
 
-    <script type="module">
-        import * as THREE from 'three';
-        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0x87CEEB);
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.5, 8);
 
-        const debug = (msg) => {
-            const el = document.getElementById('debug-log');
-            el.innerHTML += `<br>> ${msg}`;
-            console.log(msg);
-        };
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(renderer.domElement);
 
-        const CONFIG = {
-            player: './models/indian_man_in_suit%20(1).glb',
-            anim: './models/Firing Rifle(2).fbx',
-            floor: './models/seamless__floor_tiled_texture_iv.glb',
-            speed: 0.12
-        };
+    scene.add(new THREE.AmbientLight(0xffffff, 2.5));
+    const sun = new THREE.DirectionalLight(0xffffff, 1.5);
+    sun.position.set(5, 10, 5);
+    scene.add(sun);
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x87CEEB);
-        const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camera.position.set(0, 1.5, 8);
+    let mixer, player, clock = new THREE.Clock(), keys = {};
 
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
+    const gltfLoader = new GLTFLoader();
+    const fbxLoader = new FBXLoader();
 
-        scene.add(new THREE.AmbientLight(0xffffff, 2.5));
-        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
-        sun.position.set(5, 10, 5);
-        scene.add(sun);
+    // טעינת הדמות
+    gltfLoader.load(CONFIG.player, (gltf) => {
+        player = gltf.scene;
+        player.scale.set(1.2, 1.2, 1.2);
+        player.position.set(0, -3.5, 0);
+        scene.add(player);
+        debug("Player GLB Loaded.");
 
-        let mixer, player, clock = new THREE.Clock(), keys = {};
+        // מיפוי עצמות המודל
+        const modelBones = [];
+        player.traverse(n => { if(n.isBone) modelBones.push(n.name); });
+        debug(`Model has ${modelBones.length} bones.`);
 
-        const manager = new THREE.LoadingManager();
-        manager.onProgress = (url, loaded, total) => {
-            document.getElementById('progress').innerText = `טוען: ${Math.round(loaded/total*100)}%`;
-        };
-        manager.onLoad = () => {
-            document.getElementById('loading-screen').style.display = 'none';
-            debug("All files loaded from GitHub.");
-        };
-        manager.onError = (url) => debug(`ERROR: Could not load ${url}`);
+        mixer = new THREE.AnimationMixer(player);
 
-        const gltfLoader = new GLTFLoader(manager);
-        const fbxLoader = new FBXLoader(manager);
+        // טעינת האנימציה
+        fbxLoader.load(CONFIG.anim, (animObj) => {
+            const clip = animObj.animations[0];
+            debug("FBX Anim Loaded.");
 
-        // 1. טעינת רצפה
-        gltfLoader.load(CONFIG.floor, (gltf) => {
-            gltf.scene.scale.set(1000, 1, 10);
-            gltf.scene.position.y = -3.5;
-            scene.add(gltf.scene);
+            // שיטת הקישור הכפוי - Forced Retargeting
+            clip.tracks.forEach(track => {
+                // מנקה את השם מה-FBX
+                let rawName = track.name.split('.')[0]
+                    .replace('mixamorig_', '')
+                    .replace('mixamorig:', '')
+                    .replace(/.*\[(.*?)\]/, '$1'); // מוציא מהסוגריים []
+
+                // מחפש עצם במודל שמכילה את השם הזה
+                const targetBone = modelBones.find(b => b.toLowerCase().includes(rawName.toLowerCase()) || rawName.toLowerCase().includes(b.toLowerCase()));
+
+                if (targetBone) {
+                    const property = track.name.split('.')[1]; // position/quaternion
+                    track.name = `${targetBone}.${property}`;
+                }
+            });
+
+            const action = mixer.clipAction(clip);
+            action.play();
+            debug("Forced Linking Complete.");
         });
+    });
 
-        // 2. טעינת דמות + אנימציה
-        gltfLoader.load(CONFIG.player, (gltf) => {
-            player = gltf.scene;
-            player.scale.set(1.2, 1.2, 1.2);
-            player.position.set(0, -3.5, 0);
-            scene.add(player);
-            debug("Player GLB added to scene.");
+    window.addEventListener('keydown', e => keys[e.code] = true);
+    window.addEventListener('keyup', e => keys[e.code] = false);
 
-            mixer = new THREE.AnimationMixer(player);
-
-            // טעינת ה-FBX
-            fbxLoader.load(CONFIG.anim, (animObj) => {
-                if (!animObj.animations || animObj.animations.length === 0) {
-                    debug("CRITICAL: No animations found in FBX!");
-                    return;
-                }
-
-                const clip = animObj.animations[0];
-                debug(`Found animation: ${clip.name}`);
-
-                // ניקוי שמות עצמות - שיטת ה-REGEX האוניברסלית
-                clip.tracks.forEach(track => {
-                    // הסבר: אנחנו מנקים כל מה שקשור לקידומות של Mixamo (mixamorig:, וכו')
-                    track.name = track.name.replace(/[a-zA-Z0-9]+:/g, '');
-                    track.name = track.name.replace(/[a-zA-Z0-9]+_/g, '');
-                    
-                    // טיפול במקרים של [boneName]
-                    if (track.name.includes('[')) {
-                        track.name = track.name.replace(/.*\[(.*?)\]/, '$1');
-                    }
-                });
-
-                const action = mixer.clipAction(clip);
-                action.reset().play();
-                debug("Animation applied and playing.");
-            }, undefined, (err) => debug("FBX Load Error: " + err.message));
-        });
-
-        window.addEventListener('keydown', e => keys[e.code] = true);
-        window.addEventListener('keyup', e => keys[e.code] = false);
-
-        function animate() {
-            requestAnimationFrame(animate);
-            const delta = clock.getDelta();
-            
-            if (mixer) mixer.update(delta);
-            
-            if (player) {
-                if (keys['KeyD'] || keys['ArrowRight']) { 
-                    player.position.x += CONFIG.speed; 
-                    player.rotation.y = Math.PI / 2; 
-                }
-                if (keys['KeyA'] || keys['ArrowLeft']) { 
-                    player.position.x -= CONFIG.speed; 
-                    player.rotation.y = -Math.PI / 2; 
-                }
-                camera.position.x = player.position.x;
-                camera.lookAt(player.position.x, player.position.y + 1.8, 0);
-            }
-            renderer.render(scene, camera);
+    function animate() {
+        requestAnimationFrame(animate);
+        const delta = clock.getDelta();
+        if (mixer) mixer.update(delta);
+        if (player) {
+            if (keys['KeyD'] || keys['ArrowRight']) { player.position.x += CONFIG.speed; player.rotation.y = Math.PI / 2; }
+            if (keys['KeyA'] || keys['ArrowLeft']) { player.position.x -= CONFIG.speed; player.rotation.y = -Math.PI / 2; }
+            camera.position.x = player.position.x;
+            camera.lookAt(player.position.x, player.position.y + 1.8, 0);
         }
-        animate();
-    </script>
-</body>
-</html>
+        renderer.render(scene, camera);
+    }
+    animate();
+</script>
