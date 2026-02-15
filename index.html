@@ -1,18 +1,12 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Fixed Animation</title>
+    <title>2D Shooter - Correct Model & Animation</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
-        #instructions {
-            position: absolute; top: 10px; width: 100%; text-align: center;
-            color: white; font-family: sans-serif; text-shadow: 2px 2px 4px #000;
-            pointer-events: none;
-        }
     </style>
 </head>
 <body>
-    <div id="instructions">השתמש ב-A ו-D לתנועה | האנימציה נעולה למקום</div>
 
     <script type="importmap">
         {
@@ -25,8 +19,8 @@
 
     <script type="module">
         import * as THREE from 'three';
-        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
@@ -37,18 +31,17 @@
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.body.appendChild(renderer.domElement);
 
-        // תאורה חזקה כדי שהדמות לא תהיה שחורה
         scene.add(new THREE.AmbientLight(0xffffff, 2.5));
         const sun = new THREE.DirectionalLight(0xffffff, 1);
         sun.position.set(5, 10, 5);
         scene.add(sun);
 
-        const fbxLoader = new FBXLoader();
         const gltfLoader = new GLTFLoader();
+        const fbxLoader = new FBXLoader();
         let player, mixer, animationAction;
         const clock = new THREE.Clock();
 
-        // 1. טעינת רצפה (GLB)
+        // 1. טעינת רצפה
         gltfLoader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
             floor.scale.set(2000, 1, 20);
@@ -56,21 +49,23 @@
             scene.add(floor);
         });
 
-        // 2. טעינת הדמות עם האנימציה (FBX)
-        fbxLoader.load('./models/Firing Rifle.fbx', (object) => {
-            player = object;
-            
-            // הגדרת גודל ומיקום
-            player.scale.set(0.015, 0.015, 0.015); 
+        // 2. טעינת הדמות המבוקשת (Indian Man)
+        gltfLoader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
+            player = gltf.scene;
+            player.scale.set(0.6, 0.6, 0.6); // גודל מתאים לדמות GLB
             player.position.set(0, -2, 0);
             scene.add(player);
 
-            // הפעלת האנימציה
             mixer = new THREE.AnimationMixer(player);
-            if (player.animations.length > 0) {
-                animationAction = mixer.clipAction(player.animations[0]);
-                animationAction.play();
-            }
+
+            // 3. טעינת האנימציה בלבד מה-FBX והלבשתה על הדמות
+            fbxLoader.load('./models/Firing Rifle.fbx', (fbx) => {
+                if (fbx.animations.length > 0) {
+                    const clip = fbx.animations[0];
+                    animationAction = mixer.clipAction(clip);
+                    animationAction.play();
+                }
+            });
         });
 
         const keys = {};
@@ -84,11 +79,9 @@
             if (mixer) mixer.update(delta);
 
             if (player) {
-                // --- מנגנון נעילת ה-Root Motion ---
-                // אנחנו רצים על כל העצמות ומאפסים את המיקום היחסי שלהן בכל פריים
+                // נעילת Root Motion כדי שלא יזוז אחורה בגלל האנימציה
                 player.traverse((child) => {
                     if (child.isBone) {
-                        // מאפסים תנועה אופקית של האגן (Hips) שגורמת לדמות "לברוח"
                         if (child.name.includes("Hips") || child.name.includes("Root")) {
                             child.position.x = 0;
                             child.position.z = 0;
@@ -97,20 +90,15 @@
                 });
 
                 const speed = 0.15;
-                let moving = false;
-
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
-                    player.rotation.y = Math.PI / 2; // פונה ימינה
-                    moving = true;
+                    player.rotation.y = Math.PI / 2;
                 }
                 if (keys['KeyA'] || keys['ArrowLeft']) {
                     player.position.x -= speed;
-                    player.rotation.y = -Math.PI / 2; // פונה שמאלה
-                    moving = true;
+                    player.rotation.y = -Math.PI / 2;
                 }
 
-                // מצלמה עוקבת
                 camera.position.x = player.position.x;
             }
 
