@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D World - Altitude 4800 Complete</title>
+    <title>3D World - High Altitude Sky Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
         #loading-screen {
@@ -15,7 +15,7 @@
 <body>
 
     <div id="loading-screen">
-        <h1>טוען שמיים ותאורה...</h1>
+        <h1>ממקם שמיים בגובה 4800...</h1>
         <h2 id="percent">0%</h2>
     </div>
 
@@ -41,44 +41,39 @@
         };
 
         const scene = new THREE.Scene();
-        // טווח ראייה עצום של 100,000 יחידות
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 100000);
+        // טווח ראייה עצום כדי לראות את הרצפה ממרחק
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 300000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        // שיפור איכות הצבעים
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.body.appendChild(renderer.domElement);
 
-        // --- הוספת אור ---
-        // 1. אור סביבתי שמאיר הכל בצורה שווה
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1.5);
-        scene.add(ambientLight);
-
-        // 2. אור שמש (Directional) שיוצר צללים ועומק
-        const sunLight = new THREE.DirectionalLight(0xffffff, 2.5);
-        sunLight.position.set(500, 5000, 500);
-        scene.add(sunLight);
+        // תאורה חזקה מאוד
+        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 3.5);
+        scene.add(hemiLight);
 
         const loader = new GLTFLoader(loadingManager);
 
-        // --- הוספת שמיים ---
+        let sky;
         loader.load('./models/fly_sky_technique_experimental.glb', (gltf) => {
-            const sky = gltf.scene;
-            sky.scale.set(40000, 40000, 40000); // שמיים ענקיים
-            sky.traverse(n => { if(n.isMesh) n.material.side = THREE.DoubleSide; });
+            sky = gltf.scene;
+            sky.scale.set(80000, 80000, 80000); // שמיים ענקיים
+            sky.traverse(n => { 
+                if(n.isMesh) {
+                    n.material.side = THREE.DoubleSide;
+                }
+            });
             scene.add(sky);
         });
 
-        // --- הגדלת רצפה ---
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
-            // רצפה בגודל של 50,000 יחידות - שלא ייגמר הנוף
-            floor.scale.set(50000, 1, 50000); 
+            floor.scale.set(150000, 1, 150000); // רצפה עצומה
             scene.add(floor);
         });
 
         let player;
-        const moveSpeed = 15.0; // מהירות מותאמת לגובה רב
+        const moveSpeed = 25.0;
 
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
@@ -97,10 +92,16 @@
         function animate() {
             requestAnimationFrame(animate);
             if (player) {
+                // תנועה
                 if (keys['KeyW']) player.translateZ(-moveSpeed);
                 if (keys['KeyS']) player.translateZ(moveSpeed);
                 if (keys['KeyA']) player.rotation.y += 0.03;
                 if (keys['KeyD']) player.rotation.y -= 0.03;
+
+                // עדכון מיקום השמיים שיהיו תמיד סביב השחקן
+                if (sky) {
+                    sky.position.copy(player.position);
+                }
             }
             renderer.render(scene, camera);
         }
