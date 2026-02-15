@@ -1,51 +1,22 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D Game - Loading Screen</title>
+    <title>3D First Person - Camera on Head</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
-        
-        /* עיצוב מסך הטעינה */
         #loading-screen {
-            position: fixed;
-            width: 100%;
-            height: 100%;
-            background: #111;
-            z-index: 1000;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #00ff00;
-            font-family: 'Courier New', Courier, monospace;
-            direction: rtl;
-        }
-
-        #progress-container {
-            width: 300px;
-            height: 30px;
-            border: 2px solid #00ff00;
-            margin-top: 20px;
-            border-radius: 15px;
-            overflow: hidden;
-        }
-
-        #progress-bar {
-            width: 0%;
-            height: 100%;
-            background: #00ff00;
-            box-shadow: 0 0 15px #00ff00;
+            position: fixed; width: 100%; height: 100%; background: #111;
+            z-index: 1000; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; color: #00ffcc;
+            font-family: sans-serif; direction: rtl;
         }
     </style>
 </head>
 <body>
 
     <div id="loading-screen">
-        <h1>טוען מודלים...</h1>
-        <div id="progress-container">
-            <div id="progress-bar"></div>
-        </div>
-        <h2 id="progress-text">0%</h2>
+        <h1 id="status">טוען את הדמות והשמיים...</h1>
+        <h2 id="percent">0%</h2>
     </div>
 
     <script type="importmap">
@@ -61,31 +32,15 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // מנהל טעינה שיודע לחשב אחוזים
         const loadingManager = new THREE.LoadingManager();
-        const pBar = document.getElementById('progress-bar');
-        const pText = document.getElementById('progress-text');
-        const lScreen = document.getElementById('loading-screen');
-
         loadingManager.onProgress = (url, loaded, total) => {
-            const percent = (loaded / total) * 100;
-            pBar.style.width = percent + '%';
-            pText.innerText = Math.round(percent) + '%';
+            document.getElementById('percent').innerText = Math.round((loaded / total) * 100) + '%';
         };
-
         loadingManager.onLoad = () => {
-            // כשהטעינה מסתיימת, נחכה שניה ונעלים את המסך
-            setTimeout(() => {
-                lScreen.style.opacity = '0';
-                lScreen.style.transition = 'opacity 1s ease';
-                setTimeout(() => lScreen.style.display = 'none', 1000);
-            }, 500);
+            document.getElementById('loading-screen').style.display = 'none';
         };
 
-        // יצירת עולם
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x000022);
-
         const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 10000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
@@ -95,35 +50,55 @@
 
         const loader = new GLTFLoader(loadingManager);
 
-        // טעינת שמיים
-        loader.load('./models/unreal_engine_4_sky.glb', (gltf) => {
+        // 1. טעינת השמיים החדשים
+        loader.load('./models/fly_sky_technique_experimental.glb', (gltf) => {
             const sky = gltf.scene;
-            sky.scale.set(5000, 5000, 5000);
+            sky.scale.set(7000, 7000, 7000);
+            sky.traverse(n => { if(n.isMesh) n.material.side = THREE.DoubleSide; });
             scene.add(sky);
         });
 
-        // טעינת רצפה
+        // 2. טעינת הרצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
-            const floor = gltf.scene;
-            floor.scale.set(1000, 1, 1000);
-            scene.add(floor);
+            gltf.scene.scale.set(1000, 1, 1000);
+            scene.add(gltf.scene);
         });
 
-        // גובה מצלמה כפול 6 (מאוד גבוה)
-        camera.position.set(0, 300, 600);
-        camera.lookAt(0, 0, 0);
+        // 3. טעינת הדמות וחיבור המצלמה לראש שלה
+        let player;
+        loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
+            player = gltf.scene;
+            scene.add(player);
+
+            // מיקום המצלמה בתוך "הראש" של הדמות
+            // הערה: 1.7 זה בערך גובה עיניים. אם זה גבוה/נמוך מדי, תשנה את המספר הזה
+            camera.position.set(0, 1.7, 0); 
+            
+            // חיבור המצלמה לדמות כך שהיא תזוז איתה
+            player.add(camera);
+            
+            // אנחנו מסתירים את המודל של עצמנו כדי שלא נראה את פנים הראש
+            player.visible = false; 
+        });
+
+        const keys = {};
+        window.addEventListener('keydown', e => keys[e.code] = true);
+        window.addEventListener('keyup', e => keys[e.code] = false);
 
         function animate() {
             requestAnimationFrame(animate);
+            
+            if (player) {
+                const speed = 0.15;
+                if (keys['KeyW']) player.translateZ(-speed);
+                if (keys['KeyS']) player.translateZ(speed);
+                if (keys['KeyA']) player.rotation.y += 0.03;
+                if (keys['KeyD']) player.rotation.y -= 0.03;
+            }
+
             renderer.render(scene, camera);
         }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
