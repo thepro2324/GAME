@@ -1,23 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D World - High Altitude Sky Fix</title>
+    <title>3D World - 2D Edition</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
-        #loading-screen {
-            position: fixed; width: 100%; height: 100%; background: #000;
-            z-index: 1000; display: flex; flex-direction: column;
-            justify-content: center; align-items: center; color: #00ffff;
-            font-family: sans-serif; direction: rtl;
+        #instructions {
+            position: absolute; top: 10px; left: 10px; color: white;
+            font-family: Arial; text-shadow: 1px 1px 2px black; direction: rtl;
         }
     </style>
 </head>
 <body>
-
-    <div id="loading-screen">
-        <h1>ממקם שמיים בגובה 4800...</h1>
-        <h2 id="percent">0%</h2>
-    </div>
+    <div id="instructions">תנועה: חצים / WASD (ימינה ושמאלה בלבד)</div>
 
     <script type="importmap">
         {
@@ -32,58 +26,47 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        const loadingManager = new THREE.LoadingManager();
-        loadingManager.onProgress = (url, loaded, total) => {
-            document.getElementById('percent').innerText = Math.round((loaded / total) * 100) + '%';
-        };
-        loadingManager.onLoad = () => {
-            document.getElementById('loading-screen').style.display = 'none';
-        };
-
         const scene = new THREE.Scene();
-        // טווח ראייה עצום כדי לראות את הרצפה ממרחק
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 300000);
+        
+        // מצלמה אורתוגרפית (טובה ל-2D) או פרספקטיבית מרחוק
+        const camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 10000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.body.appendChild(renderer.domElement);
 
-        // תאורה חזקה מאוד
-        const hemiLight = new THREE.HemisphereLight(0xffffff, 0x888888, 3.5);
-        scene.add(hemiLight);
+        // תאורה חזקה
+        scene.add(new THREE.AmbientLight(0xffffff, 2));
 
-        const loader = new GLTFLoader(loadingManager);
+        const loader = new GLTFLoader();
 
-        let sky;
+        // 1. שמיים - נשים אותם רחוק ברקע
         loader.load('./models/fly_sky_technique_experimental.glb', (gltf) => {
-            sky = gltf.scene;
-            sky.scale.set(80000, 80000, 80000); // שמיים ענקיים
-            sky.traverse(n => { 
-                if(n.isMesh) {
-                    n.material.side = THREE.DoubleSide;
-                }
-            });
+            const sky = gltf.scene;
+            sky.scale.set(5000, 5000, 5000);
+            sky.position.z = -500; // דוחפים אותם אחורה
             scene.add(sky);
         });
 
+        // 2. רצפה - נהפוך אותה ל"פס" ארוך מלמטה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
-            floor.scale.set(150000, 1, 150000); // רצפה עצומה
+            floor.scale.set(1000, 1, 10); // ארוכה מאוד אבל לא עמוקה
+            floor.position.y = -2;
             scene.add(floor);
         });
 
+        // 3. שחקן (החיזר או האיש בחליפה)
         let player;
-        const moveSpeed = 25.0;
-
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
-            player.position.set(0, 4800, 0); 
+            player.scale.set(1, 1, 1);
+            player.position.set(0, -2, 0);
             scene.add(player);
-            
-            camera.position.set(0, 1.7, 0); 
-            player.add(camera);
-            player.visible = false; 
         });
+
+        // מיקום המצלמה - מהצד (ציר Z) מסתכלת למרכז (0,0,0)
+        camera.position.set(0, 2, 15);
+        camera.lookAt(0, 2, 0);
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
@@ -91,18 +74,23 @@
 
         function animate() {
             requestAnimationFrame(animate);
-            if (player) {
-                // תנועה
-                if (keys['KeyW']) player.translateZ(-moveSpeed);
-                if (keys['KeyS']) player.translateZ(moveSpeed);
-                if (keys['KeyA']) player.rotation.y += 0.03;
-                if (keys['KeyD']) player.rotation.y -= 0.03;
 
-                // עדכון מיקום השמיים שיהיו תמיד סביב השחקן
-                if (sky) {
-                    sky.position.copy(player.position);
+            if (player) {
+                const speed = 0.2;
+                // תנועה רק ימינה ושמאלה (ציר X)
+                if (keys['ArrowRight'] || keys['KeyD']) {
+                    player.position.x += speed;
+                    player.rotation.y = Math.PI / 2; // פונה ימינה
                 }
+                if (keys['ArrowLeft'] || keys['KeyA']) {
+                    player.position.x -= speed;
+                    player.rotation.y = -Math.PI / 2; // פונה שמאלה
+                }
+
+                // המצלמה עוקבת אחרי השחקן רק בציר ה-X
+                camera.position.x = player.position.x;
             }
+
             renderer.render(scene, camera);
         }
         animate();
