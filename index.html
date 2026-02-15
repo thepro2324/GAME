@@ -1,12 +1,17 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D GitHub Game - Character Loaded</title>
+    <title>3D First Person Game</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #000; }
+        #instructions {
+            position: absolute; top: 10px; left: 10px; color: white;
+            font-family: Arial; pointer-events: none; text-shadow: 1px 1px 2px black;
+        }
     </style>
 </head>
 <body>
+    <div id="instructions">תנועה: חצים / WASD | ירי: SPACE</div>
     <script type="importmap">
         {
             "imports": {
@@ -21,62 +26,86 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050515);
-
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // אור חזק כדי שנראה את החליפה של הדמות
-        const ambientLight = new THREE.AmbientLight(0xffffff, 1);
+        // אורות
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
         scene.add(ambientLight);
-        const sunLight = new THREE.DirectionalLight(0xffffff, 2);
-        sunLight.position.set(5, 10, 5);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1.2);
+        sunLight.position.set(10, 20, 10);
         scene.add(sunLight);
 
-        // רצפה
-        const grid = new THREE.GridHelper(100, 50, 0x444444, 0x222222);
-        scene.add(grid);
-
-        let player;
         const loader = new GLTFLoader();
 
-        // טעינת המודל הספציפי שלך
-        // שים לב: השתמשתי ב-%20 עבור רווחים כדי שהדפדפן יזהה את הקובץ
-        loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
-            player = gltf.scene;
-            player.scale.set(2, 2, 2); // אם הדמות קטנה מדי, אפשר להגדיל פה
-            scene.add(player);
-            console.log("Model Loaded Successfully!");
-        }, undefined, (error) => {
-            console.error("Error loading model:", error);
-            // קובייה ירוקה למקרה חירום
-            const geo = new THREE.BoxGeometry(1, 2, 1);
-            player = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({color: 0x00ff00}));
-            scene.add(player);
+        // 1. טעינת השמיים (Unreal Engine Sky)
+        loader.load('./models/unreal_engine_4_sky.glb', (gltf) => {
+            const sky = gltf.scene;
+            sky.scale.set(500, 500, 500); // להפוך את השמיים לענקיים
+            scene.add(sky);
         });
 
-        camera.position.set(0, 5, 10);
+        // 2. טעינת השחקן (אנחנו נשתמש במיקום שלו עבור המצלמה)
+        let player;
+        loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
+            player = gltf.scene;
+            scene.add(player);
+            // במבט גוף ראשון אנחנו מסתירים את הדמות של עצמנו
+            player.visible = false; 
+        });
+
+        // רצפה זמנית
+        const grid = new THREE.GridHelper(200, 100, 0x444444, 0x222222);
+        scene.add(grid);
+
+        // מיקום התחלתי למצלמה (גובה העיניים)
+        camera.position.y = 1.7; 
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
+        // יריות
+        const bullets = [];
+        window.addEventListener('keydown', e => {
+            if (e.code === 'Space') {
+                const bGeo = new THREE.SphereGeometry(0.1);
+                const bMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+                const bullet = new THREE.Mesh(bGeo, bMat);
+                bullet.position.copy(camera.position);
+                // כיוון הירי הוא לאן שהמצלמה מסתכלת
+                const direction = new THREE.Vector3();
+                camera.getWorldDirection(direction);
+                bullet.velocity = direction.multiplyScalar(1.5);
+                scene.add(bullet);
+                bullets.push(bullet);
+            }
+        });
+
         function animate() {
             requestAnimationFrame(animate);
-            if (player) {
-                if (keys['ArrowLeft']) player.position.x -= 0.1;
-                if (keys['ArrowRight']) player.position.x += 0.1;
-                if (keys['ArrowUp']) player.position.z -= 0.1;
-                if (keys['ArrowDown']) player.position.z += 0.1;
-                
-                camera.position.x = player.position.x;
-                camera.position.z = player.position.z + 10;
-                camera.lookAt(player.position);
-            }
+
+            // תנועת גוף ראשון
+            const speed = 0.15;
+            if (keys['ArrowUp'] || keys['KeyW']) camera.position.z -= speed;
+            if (keys['ArrowDown'] || keys['KeyS']) camera.position.z += speed;
+            if (keys['ArrowLeft'] || keys['KeyA']) camera.position.x -= speed;
+            if (keys['ArrowRight'] || keys['KeyD']) camera.position.x += speed;
+
+            // עדכון יריות
+            bullets.forEach((b, i) => {
+                b.position.add(b.velocity);
+                if (b.position.length() > 100) {
+                    scene.remove(b);
+                    bullets.splice(i, 1);
+                }
+            });
+
             renderer.render(scene, camera);
         }
+
         animate();
 
         window.addEventListener('resize', () => {
