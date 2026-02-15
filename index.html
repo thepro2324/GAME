@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Rifle Animation</title>
+    <title>2D Shooter - Animation Fix</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; }
+        body { margin: 0; overflow: hidden; background-color: #87CEEB; }
     </style>
 </head>
 <body>
@@ -19,44 +19,52 @@
 
     <script type="module">
         import * as THREE from 'three';
+        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-        import { FBXLoader } from 'three/addons/loaders/FBXLoader.js'; // הוספנו תמיכה ב-FBX
 
         const scene = new THREE.Scene();
-        
-        // שמיים בקוד
-        scene.background = new THREE.Color(0x87CEEB);
+        scene.background = new THREE.Color(0x87CEEB); // שמיים כחולים נקיים
+
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 2));
+        // אורות חזקים כדי לראות את הדמות בברור
+        const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
+        scene.add(ambientLight);
+        const sunLight = new THREE.DirectionalLight(0xffffff, 1);
+        sunLight.position.set(5, 10, 7.5);
+        scene.add(sunLight);
 
         const fbxLoader = new FBXLoader();
         const gltfLoader = new GLTFLoader();
-        let player, mixer, rifleAction;
+        let player, mixer, action;
         const clock = new THREE.Clock();
 
-        // רצפה
+        // טעינת רצפה
         gltfLoader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
-            floor.scale.set(1000, 1, 10);
-            floor.position.y = -1.5;
+            floor.scale.set(2000, 1, 20);
+            floor.position.y = -2;
             scene.add(floor);
         });
 
-        // טעינת הדמות עם קובץ ה-FBX החדש
+        // טעינת האנימציה (FBX)
         fbxLoader.load('./models/Firing Rifle.fbx', (object) => {
             player = object;
-            player.scale.set(0.01, 0.01, 0.01); // FBX בדרך כלל מגיע ענק, אז מקטינים משמעותית
-            player.position.y = -1.5;
+            
+            // שינוי גודל (Scale) - התאמה ל-FBX מ-Mixamo
+            player.scale.set(0.015, 0.015, 0.015); 
+            player.position.y = -2;
             scene.add(player);
 
+            // הפעלת האנימציה
             mixer = new THREE.AnimationMixer(player);
-            // טעינת האנימציה הראשונה שיש בקובץ
-            rifleAction = mixer.clipAction(player.animations[0]);
-            rifleAction.play(); // האנימציה פועלת תמיד (החזקת הרובה)
+            if (player.animations.length > 0) {
+                action = mixer.clipAction(player.animations[0]);
+                action.play();
+            }
         });
 
         camera.position.set(0, 1, 10);
@@ -68,31 +76,27 @@
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
-            const time = performance.now() * 0.005;
 
             if (mixer) mixer.update(delta);
 
             if (player) {
-                const speed = 0.15;
-                let isMoving = false;
+                // --- התיקון הקריטי: מניעת תנועת השורש (Root Motion) ---
+                // אנחנו מאפסים את המיקום הפנימי של העצם הראשי של המודל
+                player.traverse((child) => {
+                    if (child.isBone && child.name === "MixamoRig_Hips") { // או שם העצם הראשי
+                        child.position.x = 0;
+                        child.position.z = 0;
+                    }
+                });
 
+                const speed = 0.12;
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
                     player.rotation.y = Math.PI / 2;
-                    isMoving = true;
                 }
                 if (keys['KeyA'] || keys['ArrowLeft']) {
                     player.position.x -= speed;
                     player.rotation.y = -Math.PI / 2;
-                    isMoving = true;
-                }
-
-                // אנימציית "הליכה" בזמן החזקת הרובה:
-                // אם הוא זז, נוסיף לו קפיצות קטנות (Bobbing) כדי שזה יראה כמו צעדים
-                if (isMoving) {
-                    player.position.y = -1.5 + Math.abs(Math.sin(time * 3)) * 0.15;
-                } else {
-                    player.position.y = -1.5; // חוזר למצב עמידה רגיל עם הרובה
                 }
 
                 camera.position.x = player.position.x;
