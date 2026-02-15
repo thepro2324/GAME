@@ -1,12 +1,18 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Correct Model & Animation</title>
+    <title>2D Shooter - Debug Mode</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
+        #status {
+            position: absolute; top: 10px; left: 10px; color: red;
+            background: rgba(0,0,0,0.7); padding: 10px; font-family: monospace;
+            z-index: 100; pointer-events: none;
+        }
     </style>
 </head>
 <body>
+    <div id="status">סטטוס טעינה: ממתין...</div>
 
     <script type="importmap">
         {
@@ -22,52 +28,61 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
         import { FBXLoader } from 'three/addons/loaders/FBXLoader.js';
 
+        const status = document.getElementById('status');
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
 
         const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
         document.body.appendChild(renderer.domElement);
 
-        scene.add(new THREE.AmbientLight(0xffffff, 2.5));
-        const sun = new THREE.DirectionalLight(0xffffff, 1);
-        sun.position.set(5, 10, 5);
-        scene.add(sun);
+        scene.add(new THREE.AmbientLight(0xffffff, 3)); // תאורה חזקה מאוד
 
         const gltfLoader = new GLTFLoader();
         const fbxLoader = new FBXLoader();
-        let player, mixer, animationAction;
-        const clock = new THREE.Clock();
+        let player, mixer, clock = new THREE.Clock();
 
         // 1. טעינת רצפה
-        gltfLoader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
-            const floor = gltf.scene;
-            floor.scale.set(2000, 1, 20);
-            floor.position.y = -2;
-            scene.add(floor);
-        });
+        gltfLoader.load('./models/seamless__floor_tiled_texture_iv.glb', 
+            (gltf) => { scene.add(gltf.scene); gltf.scene.position.y = -2; gltf.scene.scale.set(1000, 1, 10); },
+            undefined, (err) => console.error("שגיאה בטעינת רצפה", err)
+        );
 
-        // 2. טעינת הדמות המבוקשת (Indian Man)
-        gltfLoader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
+        // 2. טעינת הדמות - שים לב לשם הקובץ!
+        // השתמשתי בקידוד %20 במקום רווח לביטחון
+        const modelPath = './models/indian_man_in_suit%20(1).glb';
+        const animPath = './models/Firing%20Rifle.fbx';
+
+        gltfLoader.load(modelPath, (gltf) => {
             player = gltf.scene;
-            player.scale.set(0.6, 0.6, 0.6); // גודל מתאים לדמות GLB
+            player.scale.set(0.6, 0.6, 0.6);
             player.position.set(0, -2, 0);
             scene.add(player);
+            status.innerText = "הדמות נטענה! מנסה לטעון אנימציה...";
+            status.style.color = "yellow";
 
             mixer = new THREE.AnimationMixer(player);
 
-            // 3. טעינת האנימציה בלבד מה-FBX והלבשתה על הדמות
-            fbxLoader.load('./models/Firing Rifle.fbx', (fbx) => {
+            // 3. טעינת האנימציה
+            fbxLoader.load(animPath, (fbx) => {
                 if (fbx.animations.length > 0) {
-                    const clip = fbx.animations[0];
-                    animationAction = mixer.clipAction(clip);
-                    animationAction.play();
+                    const action = mixer.clipAction(fbx.animations[0]);
+                    action.play();
+                    status.innerText = "הכל עובד!";
+                    status.style.color = "lime";
                 }
+            }, undefined, (err) => {
+                status.innerText = "שגיאה בטעינת האנימציה (FBX)";
+                console.error(err);
             });
+
+        }, undefined, (err) => {
+            status.innerText = "שגיאה בטעינת המודל (GLB)";
+            console.error(err);
         });
 
+        camera.position.set(0, 1, 10);
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
@@ -75,42 +90,22 @@
         function animate() {
             requestAnimationFrame(animate);
             const delta = clock.getDelta();
-
             if (mixer) mixer.update(delta);
-
             if (player) {
-                // נעילת Root Motion כדי שלא יזוז אחורה בגלל האנימציה
-                player.traverse((child) => {
-                    if (child.isBone) {
-                        if (child.name.includes("Hips") || child.name.includes("Root")) {
-                            child.position.x = 0;
-                            child.position.z = 0;
-                        }
+                // מניעת בריחה אחורה
+                player.traverse(c => {
+                    if (c.isBone && (c.name.includes("Hips") || c.name.includes("Root"))) {
+                        c.position.x = 0; c.position.z = 0;
                     }
                 });
 
-                const speed = 0.15;
-                if (keys['KeyD'] || keys['ArrowRight']) {
-                    player.position.x += speed;
-                    player.rotation.y = Math.PI / 2;
-                }
-                if (keys['KeyA'] || keys['ArrowLeft']) {
-                    player.position.x -= speed;
-                    player.rotation.y = -Math.PI / 2;
-                }
-
+                if (keys['KeyD'] || keys['ArrowRight']) { player.position.x += 0.15; player.rotation.y = Math.PI / 2; }
+                if (keys['KeyA'] || keys['ArrowLeft']) { player.position.x -= 0.15; player.rotation.y = -Math.PI / 2; }
                 camera.position.x = player.position.x;
             }
-
             renderer.render(scene, camera);
         }
         animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
     </script>
 </body>
 </html>
