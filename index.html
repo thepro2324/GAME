@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>3D First Person - High Camera & Floor</title>
+    <title>3D Game - High View & Sky Fix</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; }
+        body { margin: 0; overflow: hidden; background-color: #010101; }
         #instructions {
             position: absolute; top: 10px; left: 10px; color: white;
             font-family: Arial; pointer-events: none; text-shadow: 1px 1px 2px black;
@@ -12,7 +12,7 @@
     </style>
 </head>
 <body>
-    <div id="instructions">תנועה: WASD / חצים | ירי: SPACE | המצלמה הוגבהה</div>
+    <div id="instructions">גובה כפול 6 | תנועה: WASD | ירי: SPACE</div>
     <script type="importmap">
         {
             "imports": {
@@ -27,45 +27,37 @@
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
         const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 5000);
         const renderer = new THREE.WebGLRenderer({ antialias: true });
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // אורות
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        // אורות חזקים
+        const ambientLight = new THREE.AmbientLight(0xffffff, 1.0);
         scene.add(ambientLight);
-        const sunLight = new THREE.DirectionalLight(0xffffff, 1.5);
-        sunLight.position.set(10, 20, 10);
-        scene.add(sunLight);
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 2.0);
+        directionalLight.position.set(10, 50, 10);
+        scene.add(directionalLight);
 
         const loader = new GLTFLoader();
 
-        // 1. טעינת השמיים (Unreal Sky)
+        // 1. טעינת השמיים עם תיקון גודל
         loader.load('./models/unreal_engine_4_sky.glb', (gltf) => {
             const sky = gltf.scene;
-            sky.scale.set(800, 800, 800);
+            sky.scale.set(1000, 1000, 1000); 
             scene.add(sky);
-        });
+            console.log("Sky loaded!");
+        }, undefined, (e) => console.error("Sky error:", e));
 
-        // 2. טעינת מודל הרצפה החדש שלך
+        // 2. טעינת הרצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
-            floor.scale.set(50, 1, 50); // מגדילים את הרצפה שתכסה שטח גדול
-            floor.position.y = 0;
+            floor.scale.set(100, 1, 100); 
             scene.add(floor);
         });
 
-        // 3. טעינת השחקן (נסתר במצב גוף ראשון)
-        let player;
-        loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
-            player = gltf.scene;
-            player.visible = false;
-            scene.add(player);
-        });
-
-        // הגבהת המצלמה - שיניתי מ-1.7 ל-2.5 כדי שתהיה גבוהה יותר
-        camera.position.set(0, 2.5, 10); 
+        // 3. הגדרת גובה המצלמה (פי 6 מ-2.5 זה 15)
+        camera.position.set(0, 15, 30); 
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
@@ -75,13 +67,13 @@
         const bullets = [];
         window.addEventListener('keydown', e => {
             if (e.code === 'Space') {
-                const bGeo = new THREE.SphereGeometry(0.15);
+                const bGeo = new THREE.SphereGeometry(0.5);
                 const bMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
                 const bullet = new THREE.Mesh(bGeo, bMat);
                 bullet.position.copy(camera.position);
                 const direction = new THREE.Vector3();
                 camera.getWorldDirection(direction);
-                bullet.velocity = direction.multiplyScalar(1.5);
+                bullet.velocity = direction.multiplyScalar(2);
                 scene.add(bullet);
                 bullets.push(bullet);
             }
@@ -90,16 +82,15 @@
         function animate() {
             requestAnimationFrame(animate);
 
-            const speed = 0.2; // מהירות תנועה
-            if (keys['ArrowUp'] || keys['KeyW']) camera.position.z -= speed;
-            if (keys['ArrowDown'] || keys['KeyS']) camera.position.z += speed;
-            if (keys['ArrowLeft'] || keys['KeyA']) camera.position.x -= speed;
-            if (keys['ArrowRight'] || keys['KeyD']) camera.position.x += speed;
+            const speed = 0.5; // הגברתי קצת מהירות כי אתה גבוה
+            if (keys['KeyW']) camera.position.z -= speed;
+            if (keys['KeyS']) camera.position.z += speed;
+            if (keys['KeyA']) camera.position.x -= speed;
+            if (keys['KeyD']) camera.position.x += speed;
 
-            // עדכון כדורים
             bullets.forEach((b, i) => {
                 b.position.add(b.velocity);
-                if (b.position.length() > 200) {
+                if (b.position.length() > 1000) {
                     scene.remove(b);
                     bullets.splice(i, 1);
                 }
