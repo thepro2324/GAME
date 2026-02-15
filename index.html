@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Weapon Fix</title>
+    <title>2D Shooter - Scale & Weapon Fix</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
     </style>
@@ -20,6 +20,11 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
+        // --- הגדרות גודל - שנה כאן אם הם עדיין גדולים/קטנים מדי ---
+        const PLAYER_SCALE = 0.05;  // הגודל של האיש
+        const WEAPON_SCALE = 0.02;  // הגודל של הנשק
+        // ------------------------------------------------------
+
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
 
@@ -37,7 +42,7 @@
         let player, weapon, rightHandBone;
         const clock = new THREE.Clock();
 
-        // 1. טעינת רצפה
+        // 1. רצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
             floor.scale.set(1000, 1, 10);
@@ -48,37 +53,32 @@
         // 2. טעינת הדמות
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
-            player.scale.set(0.6, 0.6, 0.6);
+            player.scale.set(PLAYER_SCALE, PLAYER_SCALE, PLAYER_SCALE); // שימוש בגודל המוקטן
             player.position.set(0, -2, 0);
             scene.add(player);
 
-            // חיפוש חכם של היד - נדפיס ללוג כדי לראות אם מצאנו
+            // חיפוש עצם היד
             player.traverse((node) => {
                 const name = node.name.toLowerCase();
                 if (node.isBone && (name.includes('hand') && (name.includes('r') || name.includes('right')))) {
                     rightHandBone = node;
-                    console.log("נמצאה עצם היד:", node.name);
                 }
             });
 
-            // 3. טעינת הנשק - עם בדיקת שגיאות
+            // 3. טעינת הנשק
             loader.load('./models/rifle.glb', (weaponGltf) => {
                 weapon = weaponGltf.scene;
-                
-                // הגדרת גודל ראשוני (0.1 כדי לוודא שרואים אותו)
-                weapon.scale.set(0.1, 0.1, 0.1); 
+                weapon.scale.set(WEAPON_SCALE, WEAPON_SCALE, WEAPON_SCALE); 
                 weapon.rotation.y = Math.PI / 2;
 
                 if (rightHandBone) {
-                    rightHandBone.add(weapon); // הצמדה ליד
-                    console.log("הנשק הוצמד ליד");
+                    rightHandBone.add(weapon); 
+                    // איפוס מיקום הנשק שיהיה בדיוק בתוך כף היד
+                    weapon.position.set(0, 0, 0); 
                 } else {
-                    player.add(weapon); // הצמדה לגוף כברירת מחדל
-                    weapon.position.set(0, 1.5, 0); // שים אותו בגובה הכתפיים
-                    console.log("עצם יד לא נמצאה, הוצמד לגוף");
+                    player.add(weapon);
+                    weapon.position.set(0, 1.2, 0.2); 
                 }
-            }, undefined, (error) => {
-                console.error("שגיאה בטעינת קובץ הנשק! בדוק שקובץ rifle.glb נמצא בתיקיית models", error);
             });
         });
 
@@ -90,11 +90,11 @@
             model.traverse((node) => {
                 if (node.isBone) {
                     const name = node.name.toLowerCase();
-                    // תנוחת החזקת נשק - הורדתי מעט את הזווית מהקוד הקודם כדי שיראה טבעי יותר
-                    if (name.includes('rightarm')) node.rotation.x = -1.1; 
+                    // תנוחת החזקת נשק
+                    if (name.includes('rightarm')) node.rotation.x = -1.2; 
                     if (name.includes('leftarm')) {
                         node.rotation.x = -1.0;
-                        node.rotation.z = 0.4;
+                        node.rotation.z = 0.5;
                     }
 
                     if (isMoving) {
@@ -113,7 +113,7 @@
             const time = performance.now() * 0.001;
 
             if (player) {
-                const speed = 0.12;
+                const speed = 0.1;
                 let moving = false;
 
                 if (keys['KeyD'] || keys['ArrowRight']) {
