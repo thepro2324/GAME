@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>2D Shooter - Scaled Up</title>
+    <title>2D Shooter - Rife Weapon Fixed</title>
     <style>
         body { margin: 0; overflow: hidden; background-color: #87CEEB; }
     </style>
@@ -20,10 +20,9 @@
         import * as THREE from 'three';
         import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-        // --- הגדרות גודל חדשות (מוגדל) ---
-        const PLAYER_SCALE = 1.0;  
-        const WEAPON_SCALE = 1.2;  
-        // ---------------------------------
+        // הגדרות גודל (Scale) - גדולות וברורות
+        const PLAYER_SCALE = 1.2;  
+        const WEAPON_SCALE = 1.0;  
 
         const scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87CEEB);
@@ -34,28 +33,29 @@
         document.body.appendChild(renderer.domElement);
 
         scene.add(new THREE.AmbientLight(0xffffff, 3));
-        const sun = new THREE.DirectionalLight(0xffffff, 1);
+        const sun = new THREE.DirectionalLight(0xffffff, 1.5);
         sun.position.set(5, 10, 5);
         scene.add(sun);
 
         const loader = new GLTFLoader();
         let player, weapon, rightHandBone, clock = new THREE.Clock();
 
-        // 1. רצפה
+        // 1. טעינת רצפה
         loader.load('./models/seamless__floor_tiled_texture_iv.glb', (gltf) => {
             const floor = gltf.scene;
             floor.scale.set(1000, 1, 10);
-            floor.position.y = -3; // הורדנו מעט את הרצפה בגלל הגודל
+            floor.position.y = -3.5;
             scene.add(floor);
         });
 
-        // 2. טעינת הדמות
+        // 2. טעינת הדמות (Indian Man)
         loader.load('./models/indian_man_in_suit%20(1).glb', (gltf) => {
             player = gltf.scene;
             player.scale.set(PLAYER_SCALE, PLAYER_SCALE, PLAYER_SCALE);
-            player.position.set(0, -3, 0);
+            player.position.set(0, -3.5, 0);
             scene.add(player);
 
+            // סריקה למציאת עצם היד
             player.traverse((node) => {
                 const name = node.name.toLowerCase();
                 if (node.isBone && (name.includes('hand') && (name.includes('r') || name.includes('right')))) {
@@ -63,41 +63,49 @@
                 }
             });
 
-            // 3. טעינת הנשק
-            loader.load('./models/rifle.glb', (weaponGltf) => {
+            // 3. טעינת הנשק - השם המעודכן: rife.glb
+            loader.load('./models/rife.glb', (weaponGltf) => {
                 weapon = weaponGltf.scene;
                 weapon.scale.set(WEAPON_SCALE, WEAPON_SCALE, WEAPON_SCALE);
+                
+                // סיבוב ראשוני שהקנה יפנה קדימה
                 weapon.rotation.y = Math.PI / 2;
 
                 if (rightHandBone) {
                     rightHandBone.add(weapon);
-                    weapon.position.set(0, 0, 0);
+                    // מיקום בתוך כף היד - אם הנשק רחוק מדי, שנה את המספרים כאן
+                    weapon.position.set(0, 0, 0); 
                 } else {
                     player.add(weapon);
-                    weapon.position.set(0, 1.5, 0.5);
+                    weapon.position.set(0, 1.8, 0.5);
                 }
-            });
+            }, undefined, (err) => console.error("לא נמצא קובץ בשם rife.glb בתיקיית models"));
         });
 
-        camera.position.set(0, 0, 10); // הרחקנו מעט את המצלמה כדי לראות את הדמות הגדולה
+        camera.position.set(0, 0, 10);
 
         const keys = {};
         window.addEventListener('keydown', e => keys[e.code] = true);
         window.addEventListener('keyup', e => keys[e.code] = false);
 
+        // אנימציית קוד (Procedural)
         function animateProcedural(model, isMoving, time) {
             model.traverse((node) => {
                 if (node.isBone) {
                     const name = node.name.toLowerCase();
-                    if (name.includes('rightarm')) node.rotation.x = -1.2;
+                    // תנוחת החזקת נשק
+                    if (name.includes('rightarm')) node.rotation.x = -1.3;
                     if (name.includes('leftarm')) {
-                        node.rotation.x = -1.0;
+                        node.rotation.x = -1.1;
                         node.rotation.z = 0.5;
                     }
+                    // אנימציית רגליים
                     if (isMoving) {
                         const cycle = Math.sin(time * 12);
-                        if (name.includes('rightupleg')) node.rotation.x = cycle * 0.5;
-                        if (name.includes('leftupleg')) node.rotation.x = -cycle * 0.5;
+                        if (name.includes('rightupleg')) node.rotation.x = cycle * 0.6;
+                        if (name.includes('leftupleg')) node.rotation.x = -cycle * 0.6;
+                    } else if (name.includes('leg')) {
+                        node.rotation.x = 0;
                     }
                 }
             });
@@ -109,6 +117,8 @@
 
             if (player) {
                 const speed = 0.15;
+                const isMoving = keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft'];
+
                 if (keys['KeyD'] || keys['ArrowRight']) {
                     player.position.x += speed;
                     player.rotation.y = Math.PI / 2;
@@ -118,10 +128,9 @@
                     player.rotation.y = -Math.PI / 2;
                 }
 
-                animateProcedural(player, (keys['KeyD'] || keys['KeyA'] || keys['ArrowRight'] || keys['ArrowLeft']), time);
-                
+                animateProcedural(player, isMoving, time);
                 camera.position.x = player.position.x;
-                camera.lookAt(player.position.x, player.position.y + 1.5, 0);
+                camera.lookAt(player.position.x, player.position.y + 1.8, 0);
             }
             renderer.render(scene, camera);
         }
