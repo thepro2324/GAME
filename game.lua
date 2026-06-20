@@ -11,7 +11,7 @@ frame.Position = UDim2.new(0.325, 0, 0.2, 0)
 frame.BackgroundColor3 = Color3.new(0, 0, 0)
 frame.BackgroundTransparency = 0.5
 frame.BorderSizePixel = 0
-frame.ClipsDescendants = false -- שונה ל-false כדי שרשימת החיפוש תוכל לצאת מעט מהגבולות אם צריך
+frame.ClipsDescendants = false
 
 local uiCorner = Instance.new("UICorner")
 uiCorner.Parent = frame
@@ -37,7 +37,7 @@ title.BackgroundTransparency = 1
 title.TextStrokeTransparency = 0
 title.TextStrokeColor3 = Color3.new(0, 0, 0)
 
--- שורת קרדיט בתחתית החלון
+-- שורת קרדיט
 local creditLabel = Instance.new("TextLabel")
 creditLabel.Parent = frame
 creditLabel.Size = UDim2.new(1, 0, 0.05, 0)
@@ -49,7 +49,7 @@ creditLabel.Font = Enum.Font.SourceSansItalic
 creditLabel.BackgroundTransparency = 1
 
 ---------------------------------------------------------
--- כפתורי הקטנה וסגירה בפינה העליונה
+-- כפתורי הקטנה וסגירה
 ---------------------------------------------------------
 local minimizeButton = Instance.new("TextButton")
 minimizeButton.Parent = frame
@@ -74,7 +74,7 @@ closeButton.TextScaled = true
 Instance.new("UICorner", closeButton).CornerRadius = UDim.new(0.3, 0)
 
 ---------------------------------------------------------
--- יצירת מערכת קטגוריות (Tabs)
+-- מערכת קטגוריות
 ---------------------------------------------------------
 local targetTabButton = Instance.new("TextButton")
 targetTabButton.Parent = frame
@@ -98,7 +98,6 @@ playerTabButton.Font = Enum.Font.SourceSansBold
 playerTabButton.TextScaled = true
 Instance.new("UICorner", playerTabButton).CornerRadius = UDim.new(0.2, 0)
 
--- קבוצות אלמנטים לכל קטגוריה
 local targetGroup = Instance.new("Frame")
 targetGroup.Parent = frame
 targetGroup.Size = UDim2.new(1, 0, 0.65, 0)
@@ -113,7 +112,7 @@ playerGroup.BackgroundTransparency = 1
 playerGroup.Visible = false
 
 ---------------------------------------------------------
--- אלמנטים של קטגוריית TARGET + רשימת חיפוש חכמה
+-- אלמנטים TARGET
 ---------------------------------------------------------
 local textBox = Instance.new("TextBox")
 textBox.Parent = targetGroup
@@ -129,7 +128,6 @@ textBox.TextScaled = true
 textBox.ClearTextOnFocus = false
 Instance.new("UICorner", textBox).CornerRadius = UDim.new(0.1, 0)
 
--- תיקיית התוצאות (ScrollingFrame) שתיפתח מתחת לתיבה
 local searchResultsFrame = Instance.new("ScrollingFrame")
 searchResultsFrame.Parent = targetGroup
 searchResultsFrame.Size = UDim2.new(0.8, 0, 0.35, 0)
@@ -150,7 +148,7 @@ searchListLayout.Padding = UDim.new(0, 2)
 local startButton = Instance.new("TextButton")
 startButton.Parent = targetGroup
 startButton.Size = UDim2.new(0.7, 0, 0.18, 0)
-startButton.Position = UDim2.new(0.15, 0, 0.68, 0) -- הזזנו קצת למטה כדי לפנות מקום לרשימה
+startButton.Position = UDim2.new(0.15, 0, 0.68, 0)
 startButton.Text = "Start Targeter"
 startButton.TextColor3 = Color3.new(1, 1, 1)
 startButton.BackgroundColor3 = Color3.new(0.1, 0.5, 0.1)
@@ -160,7 +158,7 @@ startButton.TextScaled = true
 Instance.new("UICorner", startButton).CornerRadius = UDim.new(0.1, 0)
 
 ---------------------------------------------------------
--- אלמנטים של קטגוריית PLAYER
+-- אלמנטים PLAYER
 ---------------------------------------------------------
 local speedBox = Instance.new("TextBox")
 speedBox.Parent = playerGroup
@@ -173,7 +171,6 @@ speedBox.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
 speedBox.BackgroundTransparency = 0.5
 speedBox.Font = Enum.Font.SourceSans
 speedBox.TextScaled = true
-speedBox.ClearTextOnFocus = false
 Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0.1, 0)
 
 local jumpBox = Instance.new("TextBox")
@@ -187,7 +184,6 @@ jumpBox.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
 jumpBox.BackgroundTransparency = 0.5
 jumpBox.Font = Enum.Font.SourceSans
 jumpBox.TextScaled = true
-jumpBox.ClearTextOnFocus = false
 Instance.new("UICorner", jumpBox).CornerRadius = UDim.new(0.1, 0)
 
 local infJumpButton = Instance.new("TextButton")
@@ -214,9 +210,7 @@ flyButton.Font = Enum.Font.SourceSansBold
 flyButton.TextScaled = true
 Instance.new("UICorner", flyButton).CornerRadius = UDim.new(0.1, 0)
 
----------------------------------------------------------
--- יצירת ה-Slider של מהירות התעופה (Fly Speed)
----------------------------------------------------------
+-- Slider
 local sliderLabel = Instance.new("TextLabel")
 sliderLabel.Parent = playerGroup
 sliderLabel.Size = UDim2.new(0.8, 0, 0.08, 0)
@@ -244,7 +238,7 @@ sliderSlider.BorderSizePixel = 0
 Instance.new("UICorner", sliderSlider).CornerRadius = UDim.new(0.5, 0)
 
 ---------------------------------------------------------
--- לוגיקת הקטנה (Minimize) וסגירה (Close)
+-- לוגיקה כללית
 ---------------------------------------------------------
 local isMinimized = false
 local originalSize = frame.Size
@@ -277,14 +271,11 @@ minimizeButton.MouseButton1Click:Connect(function()
 end)
 
 closeButton.MouseButton1Click:Connect(function()
-    isTeleporting = false
     _G.Flying = false 
+    isTeleporting = false
     screenGui:Destroy()
 end)
 
----------------------------------------------------------
--- לוגיקת מעבר בין קטגוריות (Tabs Switching)
----------------------------------------------------------
 targetTabButton.MouseButton1Click:Connect(function()
     if isMinimized then return end
     targetGroup.Visible = true
@@ -306,34 +297,21 @@ playerTabButton.MouseButton1Click:Connect(function()
     searchResultsFrame.Visible = false
 end)
 
----------------------------------------------------------
--- לוגיקת רשימת החיפוש הדינמית (Autocomplete) והתאמה
----------------------------------------------------------
 local function updateSearchResults()
-    -- מנקה תוצאות קודמות
     for _, child in ipairs(searchResultsFrame:GetChildren()) do
-        if child:IsA("TextButton") then
-            child:Destroy()
-        end
+        if child:IsA("TextButton") then child:Destroy() end
     end
-    
     local text = textBox.Text
-    if text == "" then
-        searchResultsFrame.Visible = false
-        return
-    end
-    
+    if text == "" then searchResultsFrame.Visible = false return end
     local matches = {}
     for _, p in ipairs(game.Players:GetPlayers()) do
         if p ~= game.Players.LocalPlayer and p.Name:lower():find(text:lower()) then
             table.insert(matches, p.Name)
         end
     end
-    
     if #matches > 0 then
         searchResultsFrame.Visible = true
         searchResultsFrame.CanvasSize = UDim2.new(0, 0, 0, #matches * 25)
-        
         for i, name in ipairs(matches) do
             local btn = Instance.new("TextButton")
             btn.Parent = searchResultsFrame
@@ -345,10 +323,7 @@ local function updateSearchResults()
             btn.TextXAlignment = Enum.TextXAlignment.Left
             btn.Font = Enum.Font.SourceSans
             btn.TextSize = 14
-            
             Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
-            
-            -- כשלוחצים על שחקן מהרשימה, השם שלו נכנס לתיבה והרשימה נסגרת
             btn.MouseButton1Click:Connect(function()
                 textBox.Text = name
                 searchResultsFrame.Visible = false
@@ -358,12 +333,10 @@ local function updateSearchResults()
         searchResultsFrame.Visible = false
     end
 end
-
--- הפעלת עדכון הרשימה בכל פעם שהטקסט משתנה
 textBox:GetPropertyChangedSignal("Text"):Connect(updateSearchResults)
 
 ---------------------------------------------------------
--- לוגיקת מעקב (Target) המקורית והמתוקנת
+-- TARGET LOGIC (ANTI-JITTER 100% FIXED)
 ---------------------------------------------------------
 local isTeleporting = false
 local targetPlayer = nil
@@ -371,12 +344,25 @@ local targetConnection = nil
 
 local function stopTargeting()
     isTeleporting = false
-    if targetConnection then
-        targetConnection:Disconnect()
-        targetConnection = nil
-    end
+    if targetConnection then targetConnection:Disconnect() targetConnection = nil end
     startButton.Text = "Start Targeter"
     startButton.BackgroundColor3 = Color3.new(0.1, 0.5, 0.1)
+    
+    local localChar = game.Players.LocalPlayer.Character
+    if localChar then
+        local localRootPart = localChar:FindFirstChild("HumanoidRootPart")
+        local humanoid = localChar:FindFirstChildOfClass("Humanoid")
+        if localRootPart then
+            localRootPart.Anchored = true
+            localRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+            localRootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+            if humanoid then
+                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+            end
+            task.wait(0.05)
+            localRootPart.Anchored = false
+        end
+    end
 end
 
 startButton.MouseButton1Click:Connect(function()
@@ -384,48 +370,48 @@ startButton.MouseButton1Click:Connect(function()
         stopTargeting()
     else
         local targetName = textBox.Text
-        -- חיפוש שחקן מדויק או לפי מה שכתוב
         targetPlayer = game.Players:FindFirstChild(targetName)
-        
         if not targetPlayer then
-            -- אם לא נבחר שם מלא, יחפש שחקן חלקי כמו מקודם
             for _, p in ipairs(game.Players:GetPlayers()) do
                 if p.Name:lower():find(targetName:lower()) and p ~= game.Players.LocalPlayer then
-                    targetPlayer = p
-                    break
+                    targetPlayer = p break
                 end
             end
         end
-        
         if targetPlayer then
             isTeleporting = true
-            searchResultsFrame.Visible = false -- סוגר את הרשימה בזמן העבודה
+            searchResultsFrame.Visible = false
             startButton.Text = "Stop Targeter"
             startButton.BackgroundColor3 = Color3.new(0.6, 0.1, 0.1)
             
             targetConnection = RunService.Heartbeat:Connect(function()
                 if not isTeleporting or not targetPlayer or not game.Players:FindFirstChild(targetPlayer.Name) then
-                    stopTargeting()
-                    return
+                    stopTargeting() return
                 end
-                
                 local localChar = game.Players.LocalPlayer.Character
                 local targetChar = targetPlayer.Character
-                
                 if localChar and targetChar then
                     local targetRootPart = targetChar:FindFirstChild("HumanoidRootPart")
                     local localRootPart = localChar:FindFirstChild("HumanoidRootPart")
+                    local humanoid = localChar:FindFirstChildOfClass("Humanoid")
                     
                     if targetRootPart and localRootPart then
+                        -- מניעת רעידות: כפיית מצב פיזיקה קשיח ואיפוס מהירויות בכל פריים
                         localRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                         localRootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
                         
+                        if humanoid then
+                            humanoid:ChangeState(Enum.HumanoidStateType.Physics)
+                        end
+                        
+                        -- מניעת התנגשויות (NoClip) מול המטרה כדי שלא ירעד כשנוגעים בה
                         for _, myPart in ipairs(localChar:GetDescendants()) do
-                            if myPart:IsA("BasePart") then
-                                myPart.CanCollide = true
+                            if myPart:IsA("BasePart") then 
+                                myPart.CanCollide = false 
                             end
                         end
                         
+                        -- מיקום מחדש חלק ומדויק מאחורי המטרה
                         localRootPart.CFrame = targetRootPart.CFrame * CFrame.new(0, 0, 3.5)
                     end
                 end
@@ -433,15 +419,13 @@ startButton.MouseButton1Click:Connect(function()
         else
             startButton.Text = "Player Not Found"
             task.wait(1)
-            if not isTeleporting then
-                startButton.Text = "Start Targeter"
-            end
+            if not isTeleporting then startButton.Text = "Start Targeter" end
         end
     end
 end)
 
 ---------------------------------------------------------
--- לוגיקת מהירות, גובה קפיצה וקפיצה אינסופית (Player)
+-- PLAYER LOGIC (SPEED/JUMP)
 ---------------------------------------------------------
 local player = game.Players.LocalPlayer
 local infiniteJumpEnabled = false
@@ -488,7 +472,7 @@ UserInputService.JumpRequest:Connect(function()
 end)
 
 ---------------------------------------------------------
--- מערכת תעופה חלקה ומקצועית + קישור ל-Slider
+-- FLY LOGIC (ANTI-JITTER FIXED)
 ---------------------------------------------------------
 _G.Flying = false
 local flySpeed = 60 
@@ -527,27 +511,22 @@ flyButton.MouseButton1Click:Connect(function()
     if _G.Flying then
         flyButton.Text = "Fly: ON"
         flyButton.TextColor3 = Color3.new(0.3, 1, 0.3)
-        
         task.spawn(function()
             local character = player.Character or player.CharacterAdded:Wait()
             local root = character:WaitForChild("HumanoidRootPart")
             local humanoid = character:WaitForChild("Humanoid")
             local camera = workspace.CurrentCamera
-            
             local bv = Instance.new("BodyVelocity")
             bv.MaxForce = Vector3.new(math.huge, math.huge, math.huge)
             bv.Velocity = Vector3.new(0, 0, 0)
             bv.Parent = root
-            
             local bg = Instance.new("BodyGyro")
             bg.MaxTorque = Vector3.new(math.huge, math.huge, math.huge)
             bg.CFrame = root.CFrame
             bg.Parent = root
-            
             humanoid.PlatformStand = true
             
             local keys = {W = false, S = false, A = false, D = false, Space = false, LeftShift = false}
-            
             local con1 = UserInputService.InputBegan:Connect(function(input, gpe)
                 if gpe then return end
                 if input.KeyCode == Enum.KeyCode.W then keys.W = true
@@ -557,7 +536,6 @@ flyButton.MouseButton1Click:Connect(function()
                 elseif input.KeyCode == Enum.KeyCode.Space then keys.Space = true
                 elseif input.KeyCode == Enum.KeyCode.LeftShift then keys.LeftShift = true end
             end)
-            
             local con2 = UserInputService.InputEnded:Connect(function(input)
                 if input.KeyCode == Enum.KeyCode.W then keys.W = false
                 elseif input.KeyCode == Enum.KeyCode.S then keys.S = false
@@ -569,33 +547,39 @@ flyButton.MouseButton1Click:Connect(function()
             
             while _G.Flying and root and root.Parent and humanoid and humanoid.Parent do
                 local dir = Vector3.new(0, 0, 0)
-                
                 if keys.W then dir = dir + camera.CFrame.LookVector end
                 if keys.S then dir = dir - camera.CFrame.LookVector end
                 if keys.A then dir = dir - camera.CFrame.RightVector end
                 if keys.D then dir = dir + camera.CFrame.RightVector end
                 if keys.Space then dir = dir + Vector3.new(0, 1, 0) end
                 if keys.LeftShift then dir = dir - Vector3.new(0, 1, 0) end
-                
                 if dir.Magnitude == 0 and humanoid.MoveDirection.Magnitude > 0 then
                     dir = camera.CFrame:VectorToWorldSpace(Vector3.new(humanoid.MoveDirection.X, 0, humanoid.MoveDirection.Z).Unit)
                 end
-                
-                if dir.Magnitude > 0 then
-                    bv.Velocity = dir.Unit * flySpeed
-                else
-                    bv.Velocity = Vector3.new(0, 0, 0)
-                end
-                
+                if dir.Magnitude > 0 then bv.Velocity = dir.Unit * flySpeed else bv.Velocity = Vector3.new(0, 0, 0) end
                 bg.CFrame = camera.CFrame
                 task.wait()
             end
             
             con1:Disconnect()
             con2:Disconnect()
+            
             if bv then bv:Destroy() end
             if bg then bg:Destroy() end
-            if humanoid then humanoid.PlatformStand = false end
+            
+            if root then
+                root.Anchored = true
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                
+                if humanoid then
+                    humanoid.PlatformStand = false
+                    humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+                end
+                
+                task.wait(0.05) 
+                root.Anchored = false
+            end
         end)
     else
         flyButton.Text = "Fly: OFF"
@@ -604,48 +588,25 @@ flyButton.MouseButton1Click:Connect(function()
 end)
 
 ---------------------------------------------------------
--- מערכת גרירה חלקה לפאנל הראשי (עכבר ומסך מגע)
+-- DRAGGING
 ---------------------------------------------------------
 local dragging = false
 local dragInput, dragStart, startPos
-
 local function update(input)
     local delta = input.Position - dragStart
-    frame.Position = UDim2.new(
-        startPos.X.Scale, 
-        startPos.X.Offset + delta.X, 
-        startPos.Y.Scale, 
-        startPos.Y.Offset + delta.Y
-    )
+    frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
 end
-
 frame.InputBegan:Connect(function(input)
     if UserInputService:GetFocusedTextBox() then return end
-    if input.Position.Y > sliderFrame.AbsolutePosition.Y - 20 and input.Position.Y < sliderFrame.AbsolutePosition.Y + 20 and playerGroup.Visible then
-        return
-    end
-
+    if input.Position.Y > sliderFrame.AbsolutePosition.Y - 20 and input.Position.Y < sliderFrame.AbsolutePosition.Y + 20 and playerGroup.Visible then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        dragging = true
-        dragStart = input.Position
-        startPos = frame.Position
-        
-        input.Changed:Connect(function()
-            if input.UserInputState == Enum.UserInputState.End then
-                dragging = false
-            end
-        end)
+        dragging = true dragStart = input.Position startPos = frame.Position
+        input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
     end
 end)
-
 frame.InputChanged:Connect(function(input)
-    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
-        dragInput = input
-    end
+    if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
 end)
-
 UserInputService.InputChanged:Connect(function(input)
-    if input == dragInput and dragging then
-        update(input)
-    end
+    if input == dragInput and dragging then update(input) end
 end)
