@@ -104,19 +104,23 @@ targetGroup.Size = UDim2.new(1, 0, 0.65, 0)
 targetGroup.Position = UDim2.new(0, 0, 0.25, 0)
 targetGroup.BackgroundTransparency = 1
 
-local playerGroup = Instance.new("Frame")
+-- פריים גולל (ScrollingFrame)
+local playerGroup = Instance.new("ScrollingFrame")
 playerGroup.Parent = frame
 playerGroup.Size = UDim2.new(1, 0, 0.65, 0)
 playerGroup.Position = UDim2.new(0, 0, 0.25, 0)
 playerGroup.BackgroundTransparency = 1
 playerGroup.Visible = false
+playerGroup.ScrollBarThickness = 6
+playerGroup.BorderSizePixel = 0
+playerGroup.CanvasSize = UDim2.new(0, 0, 1.8, 0)
 
 ---------------------------------------------------------
 -- אלמנטים TARGET
 ---------------------------------------------------------
 local textBox = Instance.new("TextBox")
 textBox.Parent = targetGroup
-textBox.Size = UDim2.new(0.8, 0, 0.15, 0)
+textBox.Size = UDim2.new(0.8, 0, 0.12, 0)
 textBox.Position = UDim2.new(0.1, 0, 0.1, 0)
 textBox.PlaceholderText = "Target Nickname"
 textBox.Text = ""
@@ -131,7 +135,7 @@ Instance.new("UICorner", textBox).CornerRadius = UDim.new(0.1, 0)
 local searchResultsFrame = Instance.new("ScrollingFrame")
 searchResultsFrame.Parent = targetGroup
 searchResultsFrame.Size = UDim2.new(0.8, 0, 0.35, 0)
-searchResultsFrame.Position = UDim2.new(0.1, 0, 0.26, 0)
+searchResultsFrame.Position = UDim2.new(0.1, 0, 0.24, 0)
 searchResultsFrame.BackgroundColor3 = Color3.new(0.1, 0.1, 0.1)
 searchResultsFrame.BackgroundTransparency = 0.1
 searchResultsFrame.BorderSizePixel = 0
@@ -160,90 +164,92 @@ Instance.new("UICorner", startButton).CornerRadius = UDim.new(0.1, 0)
 ---------------------------------------------------------
 -- אלמנטים PLAYER
 ---------------------------------------------------------
-local speedBox = Instance.new("TextBox")
-speedBox.Parent = playerGroup
-speedBox.Size = UDim2.new(0.8, 0, 0.12, 0)
-speedBox.Position = UDim2.new(0.1, 0, 0.02, 0)
-speedBox.PlaceholderText = "WalkSpeed (Default: 16)"
-speedBox.Text = ""
-speedBox.TextColor3 = Color3.new(1, 1, 1)
-speedBox.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-speedBox.BackgroundTransparency = 0.5
-speedBox.Font = Enum.Font.SourceSans
-speedBox.TextScaled = true
-Instance.new("UICorner", speedBox).CornerRadius = UDim.new(0.1, 0)
+local infiniteJumpEnabled = false
+local walkSpeedValue = 16
+local jumpPowerValue = 50
+local flySpeed = 60 
 
-local jumpBox = Instance.new("TextBox")
-jumpBox.Parent = playerGroup
-jumpBox.Size = UDim2.new(0.8, 0, 0.12, 0)
-jumpBox.Position = UDim2.new(0.1, 0, 0.16, 0)
-jumpBox.PlaceholderText = "JumpPower (Default: 50)"
-jumpBox.Text = ""
-jumpBox.TextColor3 = Color3.new(1, 1, 1)
-jumpBox.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-jumpBox.BackgroundTransparency = 0.5
-jumpBox.Font = Enum.Font.SourceSans
-jumpBox.TextScaled = true
-Instance.new("UICorner", jumpBox).CornerRadius = UDim.new(0.1, 0)
+local function createToggleButton(name, textOn, textOff, posX, posY, sizeX, sizeY)
+    local btn = Instance.new("TextButton")
+    btn.Parent = playerGroup
+    btn.Size = UDim2.new(sizeX, 0, sizeY, 0)
+    btn.Position = UDim2.new(posX, 0, posY, 0)
+    btn.Text = textOff
+    btn.TextColor3 = Color3.new(1, 0.3, 0.3)
+    btn.BackgroundColor3 = Color3.new(0.18, 0.18, 0.18)
+    btn.Font = Enum.Font.SourceSansBold
+    btn.TextScaled = true
+    Instance.new("UICorner", btn).CornerRadius = UDim.new(0.15, 0)
+    return btn
+end
 
-local infJumpButton = Instance.new("TextButton")
-infJumpButton.Parent = playerGroup
-infJumpButton.Size = UDim2.new(0.8, 0, 0.12, 0)
-infJumpButton.Position = UDim2.new(0.1, 0, 0.30, 0)
-infJumpButton.Text = "Infinite Jump: OFF"
-infJumpButton.TextColor3 = Color3.new(1, 0.3, 0.3)
-infJumpButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-infJumpButton.BackgroundTransparency = 0.5
-infJumpButton.Font = Enum.Font.SourceSansBold
-infJumpButton.TextScaled = true
-Instance.new("UICorner", infJumpButton).CornerRadius = UDim.new(0.1, 0)
+local infJumpButton = createToggleButton("InfJump", "Inf Jump: ON", "Inf Jump: OFF", 0.06, 0.02, 0.42, 0.06)
+local flyButton = createToggleButton("Fly", "Fly: ON", "Fly: OFF", 0.52, 0.02, 0.42, 0.06)
 
-local flyButton = Instance.new("TextButton")
-flyButton.Parent = playerGroup
-flyButton.Size = UDim2.new(0.8, 0, 0.12, 0)
-flyButton.Position = UDim2.new(0.1, 0, 0.44, 0)
-flyButton.Text = "Fly: OFF"
-flyButton.TextColor3 = Color3.new(1, 0.3, 0.3)
-flyButton.BackgroundColor3 = Color3.new(0.2, 0.2, 0.2)
-flyButton.BackgroundTransparency = 0.5
-flyButton.Font = Enum.Font.SourceSansBold
-flyButton.TextScaled = true
-Instance.new("UICorner", flyButton).CornerRadius = UDim.new(0.1, 0)
+local espButton = createToggleButton("ESP", "ESP: ON", "ESP: OFF", 0.06, 0.09, 0.42, 0.06)
+local noclipButton = createToggleButton("Noclip", "Noclip: ON", "Noclip: OFF", 0.52, 0.09, 0.42, 0.06)
 
--- Slider
-local sliderLabel = Instance.new("TextLabel")
-sliderLabel.Parent = playerGroup
-sliderLabel.Size = UDim2.new(0.8, 0, 0.08, 0)
-sliderLabel.Position = UDim2.new(0.1, 0, 0.58, 0)
-sliderLabel.Text = "Fly Speed: 60"
-sliderLabel.TextColor3 = Color3.new(1, 1, 1)
-sliderLabel.TextScaled = true
-sliderLabel.Font = Enum.Font.SourceSansBold
-sliderLabel.BackgroundTransparency = 1
+local oxygenButton = createToggleButton("Oxygen", "Inf Oxygen: ON", "Inf Oxygen: OFF", 0.06, 0.16, 0.42, 0.06)
+local invisibleButton = createToggleButton("Invisible", "Invisible: ON", "Invisible: OFF", 0.52, 0.16, 0.42, 0.06)
 
-local sliderFrame = Instance.new("Frame")
-sliderFrame.Parent = playerGroup
-sliderFrame.Size = UDim2.new(0.8, 0, 0.04, 0)
-sliderFrame.Position = UDim2.new(0.1, 0, 0.68, 0)
-sliderFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
-sliderFrame.BorderSizePixel = 0
-Instance.new("UICorner", sliderFrame).CornerRadius = UDim.new(0.5, 0)
-
-local sliderSlider = Instance.new("Frame")
-sliderSlider.Parent = sliderFrame
-sliderSlider.Size = UDim2.new(0.025, 0, 2.5, 0)
-sliderSlider.Position = UDim2.new(0.025, 0, -0.75, 0)
-sliderSlider.BackgroundColor3 = Color3.new(1, 1, 1)
-sliderSlider.BorderSizePixel = 0
-Instance.new("UICorner", sliderSlider).CornerRadius = UDim.new(0.5, 0)
+local ctrlClickButton = createToggleButton("CtrlClick", "Ctrl+Click TP: ON", "Ctrl+Click TP: OFF", 0.06, 0.23, 0.42, 0.06)
+local antiRagdollButton = createToggleButton("AntiRagdoll", "Anti-Ragdoll: ON", "Anti-Ragdoll: OFF", 0.52, 0.23, 0.42, 0.06)
 
 ---------------------------------------------------------
--- לוגיקה כללית
+-- פונקציה לייצור סליידרים
+---------------------------------------------------------
+local function createSlider(parent, labelText, min, max, default, posY)
+    local label = Instance.new("TextLabel")
+    label.Parent = parent
+    label.Size = UDim2.new(0.88, 0, 0.04, 0)
+    label.Position = UDim2.new(0.06, 0, posY, 0)
+    label.Text = labelText .. ": " .. default
+    label.TextColor3 = Color3.new(1, 1, 1)
+    label.TextScaled = true
+    label.Font = Enum.Font.SourceSansBold
+    label.BackgroundTransparency = 1
+    label.TextXAlignment = Enum.TextXAlignment.Left
+
+    local bgFrame = Instance.new("Frame")
+    bgFrame.Parent = parent
+    bgFrame.Size = UDim2.new(0.88, 0, 0.018, 0)
+    bgFrame.Position = UDim2.new(0.06, 0, posY + 0.045, 0)
+    bgFrame.BackgroundColor3 = Color3.new(0.15, 0.15, 0.15)
+    bgFrame.BorderSizePixel = 0
+    Instance.new("UICorner", bgFrame).CornerRadius = UDim.new(0.5, 0)
+
+    local sliderNode = Instance.new("Frame")
+    sliderNode.Parent = bgFrame
+    local startPerc = math.clamp((default - min) / (max - min), 0, 1)
+    sliderNode.Size = UDim2.new(0.03, 0, 2.5, 0)
+    sliderNode.Position = UDim2.new(startPerc, 0, -0.75, 0)
+    sliderNode.BackgroundColor3 = Color3.new(1, 1, 1)
+    sliderNode.BorderSizePixel = 0
+    Instance.new("UICorner", sliderNode).CornerRadius = UDim.new(0.5, 0)
+
+    return label, bgFrame, sliderNode
+end
+
+local speedLabel, speedBg, speedSlider = createSlider(playerGroup, "WalkSpeed", 16, 2000, 16, 0.32)
+local jumpLabel, jumpBg, jumpSlider = createSlider(playerGroup, "JumpPower", 50, 5000, 50, 0.43)
+local flyLabel, flyBg, flySlider = createSlider(playerGroup, "Fly Speed", 10, 2000, 60, 0.54)
+
+---------------------------------------------------------
+-- לוגיקה כללית וניהול סגירה
 ---------------------------------------------------------
 local isMinimized = false
 local originalSize = frame.Size
 local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
+local playerObj = game.Players.LocalPlayer
+
+local function removeAllESP()
+    for _, p in ipairs(game.Players:GetPlayers()) do
+        if p.Character and p.Character:FindFirstChild("ESPHighlight") then
+            p.Character.ESPHighlight:Destroy()
+        end
+    end
+end
 
 minimizeButton.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
@@ -273,6 +279,12 @@ end)
 closeButton.MouseButton1Click:Connect(function()
     _G.Flying = false 
     isTeleporting = false
+    _G.ESP_Enabled = false
+    _G.Noclip = false
+    _G.InfOxygen = false
+    _G.CtrlClickTP = false
+    _G.AntiRagdoll = false
+    removeAllESP()
     screenGui:Destroy()
 end)
 
@@ -336,7 +348,7 @@ end
 textBox:GetPropertyChangedSignal("Text"):Connect(updateSearchResults)
 
 ---------------------------------------------------------
--- TARGET LOGIC (ANTI-JITTER 100% FIXED)
+-- TARGET LOGIC (ANTI-JITTER FIXED)
 ---------------------------------------------------------
 local isTeleporting = false
 local targetPlayer = nil
@@ -356,9 +368,7 @@ local function stopTargeting()
             localRootPart.Anchored = true
             localRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
             localRootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-            if humanoid then
-                humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-            end
+            if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Running) end
             task.wait(0.05)
             localRootPart.Anchored = false
         end
@@ -396,22 +406,12 @@ startButton.MouseButton1Click:Connect(function()
                     local humanoid = localChar:FindFirstChildOfClass("Humanoid")
                     
                     if targetRootPart and localRootPart then
-                        -- מניעת רעידות: כפיית מצב פיזיקה קשיח ואיפוס מהירויות בכל פריים
                         localRootPart.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                         localRootPart.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                        
-                        if humanoid then
-                            humanoid:ChangeState(Enum.HumanoidStateType.Physics)
-                        end
-                        
-                        -- מניעת התנגשויות (NoClip) מול המטרה כדי שלא ירעד כשנוגעים בה
+                        if humanoid then humanoid:ChangeState(Enum.HumanoidStateType.Physics) end
                         for _, myPart in ipairs(localChar:GetDescendants()) do
-                            if myPart:IsA("BasePart") then 
-                                myPart.CanCollide = false 
-                            end
+                            if myPart:IsA("BasePart") then myPart.CanCollide = false end
                         end
-                        
-                        -- מיקום מחדש חלק ומדויק מאחורי המטרה
                         localRootPart.CFrame = targetRootPart.CFrame * CFrame.new(0, 0, 3.5)
                     end
                 end
@@ -425,94 +425,328 @@ startButton.MouseButton1Click:Connect(function()
 end)
 
 ---------------------------------------------------------
--- PLAYER LOGIC (SPEED/JUMP)
+-- לוגיקת סליידרים משולבת (Speed, Jump, Fly)
 ---------------------------------------------------------
-local player = game.Players.LocalPlayer
-local infiniteJumpEnabled = false
+local activeSlider = nil
+local activeSliderType = nil
 
-speedBox.FocusLost:Connect(function()
-    local numericSpeed = tonumber(speedBox.Text)
-    if numericSpeed and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-        player.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = numericSpeed
+local function updateSliderPosition(input, bgFrame, sliderNode, min, max, labelText)
+    local percentage = math.clamp((input.Position.X - bgFrame.AbsolutePosition.X) / bgFrame.AbsoluteSize.X, 0, 1)
+    sliderNode.Position = UDim2.new(percentage, -sliderNode.AbsoluteSize.X/2, -0.75, 0)
+    local finalVal = math.round(min + (percentage * (max - min)))
+    
+    if activeSliderType == "Speed" then
+        walkSpeedValue = finalVal
+        speedLabel.Text = labelText .. ": " .. walkSpeedValue
+        if playerObj.Character and playerObj.Character:FindFirstChildOfClass("Humanoid") then
+            playerObj.Character:FindFirstChildOfClass("Humanoid").WalkSpeed = walkSpeedValue
+        end
+    elseif activeSliderType == "Jump" then
+        jumpPowerValue = finalVal
+        jumpLabel.Text = labelText .. ": " .. jumpPowerValue
+        if playerObj.Character and playerObj.Character:FindFirstChildOfClass("Humanoid") then
+            local humanoid = playerObj.Character:FindFirstChildOfClass("Humanoid")
+            humanoid.UseJumpPower = true
+            humanoid.JumpPower = jumpPowerValue
+        end
+    elseif activeSliderType == "Fly" then
+        flySpeed = finalVal
+        flyLabel.Text = labelText .. ": " .. flySpeed
     end
-end)
-
-jumpBox.FocusLost:Connect(function()
-    local numericJump = tonumber(jumpBox.Text)
-    if numericJump and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-        local humanoid = player.Character:FindFirstChildOfClass("Humanoid")
-        humanoid.UseJumpPower = true
-        humanoid.JumpPower = numericJump
-    end
-end)
-
-player.CharacterAdded:Connect(function(character)
-    local humanoid = character:WaitForChild("Humanoid")
-    local numericSpeed = tonumber(speedBox.Text)
-    if numericSpeed then humanoid.WalkSpeed = numericSpeed end
-    local numericJump = tonumber(jumpBox.Text)
-    if numericJump then humanoid.UseJumpPower = true; humanoid.JumpPower = numericJump end
-end)
-
-infJumpButton.MouseButton1Click:Connect(function()
-    infiniteJumpEnabled = not infiniteJumpEnabled
-    if infiniteJumpEnabled then
-        infJumpButton.Text = "Infinite Jump: ON"
-        infJumpButton.TextColor3 = Color3.new(0.3, 1, 0.3)
-    else
-        infJumpButton.Text = "Infinite Jump: OFF"
-        infJumpButton.TextColor3 = Color3.new(1, 0.3, 0.3)
-    end
-end)
-
-UserInputService.JumpRequest:Connect(function()
-    if infiniteJumpEnabled and player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
-        player.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
-    end
-end)
-
----------------------------------------------------------
--- FLY LOGIC (ANTI-JITTER FIXED)
----------------------------------------------------------
-_G.Flying = false
-local flySpeed = 60 
-local minSpeed = 10
-local maxSpeed = 2000
-local sliderDragging = false
-
-local function updateSlider(input)
-    local percentage = math.clamp((input.Position.X - sliderFrame.AbsolutePosition.X) / sliderFrame.AbsoluteSize.X, 0, 1)
-    sliderSlider.Position = UDim2.new(percentage, -sliderSlider.AbsoluteSize.X/2, -0.75, 0)
-    flySpeed = math.round(minSpeed + (percentage * (maxSpeed - minSpeed)))
-    sliderLabel.Text = "Fly Speed: " .. flySpeed
 end
 
-sliderFrame.InputBegan:Connect(function(input)
+speedBg.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        sliderDragging = true
-        updateSlider(input)
+        activeSlider = speedBg activeSliderType = "Speed"
+        updateSliderPosition(input, speedBg, speedSlider, 16, 2000, "WalkSpeed")
+    end
+end)
+
+jumpBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        activeSlider = jumpBg activeSliderType = "Jump"
+        updateSliderPosition(input, jumpBg, jumpSlider, 50, 5000, "JumpPower")
+    end
+end)
+
+flyBg.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        activeSlider = flyBg activeSliderType = "Fly"
+        updateSliderPosition(input, flyBg, flySlider, 10, 2000, "Fly Speed")
     end
 end)
 
 UserInputService.InputChanged:Connect(function(input)
-    if sliderDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-        updateSlider(input)
+    if activeSlider and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        if activeSliderType == "Speed" then updateSliderPosition(input, speedBg, speedSlider, 16, 2000, "WalkSpeed")
+        elseif activeSliderType == "Jump" then updateSliderPosition(input, jumpBg, jumpSlider, 50, 5000, "JumpPower")
+        elseif activeSliderType == "Fly" then updateSliderPosition(input, flyBg, flySlider, 10, 2000, "Fly Speed") end
     end
 end)
 
 UserInputService.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-        sliderDragging = false
+        activeSlider = nil activeSliderType = nil
     end
 end)
 
+playerObj.CharacterAdded:Connect(function(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    humanoid.WalkSpeed = walkSpeedValue
+    humanoid.UseJumpPower = true
+    humanoid.JumpPower = jumpPowerValue
+end)
+
+---------------------------------------------------------
+-- פיצ'רים מתקדמים - ביצועים והפעלות (ON/OFF)
+---------------------------------------------------------
+
+-- 1. Inf Jump
+infJumpButton.MouseButton1Click:Connect(function()
+    infiniteJumpEnabled = not infiniteJumpEnabled
+    infJumpButton.Text = infiniteJumpEnabled and "Inf Jump: ON" or "Inf Jump: OFF"
+    infJumpButton.TextColor3 = infiniteJumpEnabled and Color3.new(0.3, 1, 0.3) or Color3.new(1, 0.3, 0.3)
+end)
+UserInputService.JumpRequest:Connect(function()
+    if infiniteJumpEnabled and playerObj.Character and playerObj.Character:FindFirstChildOfClass("Humanoid") then
+        playerObj.Character:FindFirstChildOfClass("Humanoid"):ChangeState(Enum.HumanoidStateType.Jumping)
+    end
+end)
+
+-- 2. NOCLIP
+_G.Noclip = false
+noclipButton.MouseButton1Click:Connect(function()
+    _G.Noclip = not _G.Noclip
+    noclipButton.Text = _G.Noclip and "Noclip: ON" or "Noclip: OFF"
+    noclipButton.TextColor3 = _G.Noclip and Color3.new(0.3, 1, 0.3) or Color3.new(1, 0.3, 0.3)
+end)
+RunService.Stepped:Connect(function()
+    if _G.Noclip and playerObj.Character then
+        for _, part in ipairs(playerObj.Character:GetDescendants()) do
+            if part:IsA("BasePart") then part.CanCollide = false end
+        end
+    end
+end)
+
+-- 3. INF OXYGEN
+_G.InfOxygen = false
+oxygenButton.MouseButton1Click:Connect(function()
+    _G.InfOxygen = not _G.InfOxygen
+    oxygenButton.Text = _G.InfOxygen and "Inf Oxygen: ON" or "Inf Oxygen: OFF"
+    oxygenButton.TextColor3 = _G.InfOxygen and Color3.new(0.3, 1, 0.3) or Color3.new(1, 0.3, 0.3)
+end)
+task.spawn(function()
+    while true do
+        if _G.InfOxygen and playerObj.Character then
+            local hum = playerObj.Character:FindFirstChildOfClass("Humanoid")
+            if hum and hum:GetAttribute("Oxygen") then hum:SetAttribute("Oxygen", 100) end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- 4. CHARACTER CLONE INVISIBLE SYSTEM (שיטת אינפיניט יילד - חלקה לחלוטין)
+local invisibleActive = false
+local charClone = nil
+local invisibleLoop = nil
+
+invisibleButton.MouseButton1Click:Connect(function()
+    invisibleActive = not invisibleActive
+    invisibleButton.Text = invisibleActive and "Invisible: ON" or "Invisible: OFF"
+    invisibleButton.TextColor3 = invisibleActive and Color3.new(0.3, 1, 0.3) or Color3.new(1, 0.3, 0.3)
+    
+    local player = game.Players.LocalPlayer
+    local realChar = player.Character
+    if not realChar then return end
+    
+    local realRoot = realChar:FindFirstChild("HumanoidRootPart")
+    local realHum = realChar:FindFirstChildOfClass("Humanoid")
+    local camera = workspace.CurrentCamera
+    
+    if invisibleActive then
+        if realRoot and realHum then
+            realChar.Archivable = true
+            charClone = realChar:Clone()
+            charClone.Name = "ori_invisible_clone"
+            charClone.Parent = workspace
+            
+            -- הגדרת קלון מקומי נראה לעין השחקן בלבד
+            for _, part in ipairs(charClone:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.CanCollide = false
+                    part.Transparency = 0.3 -- שקיפות קלה כדי שתדע שאתה בלתי נראה
+                end
+            end
+            
+            -- העלמת הדמות האמיתית מהשרת ושיגור למטה
+            for _, part in ipairs(realChar:GetDescendants()) do
+                if part:IsA("BasePart") then
+                    part.Transparency = 1
+                    part.CanCollide = false
+                elseif part:IsA("Decal") then
+                    part.Transparency = 1
+                end
+            end
+            
+            camera.CameraSubject = charClone:FindFirstChildOfClass("Humanoid")
+            realHum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+            
+            -- לולאת סנכרון תנועה חלקה (ללא רעידות בכלל)
+            invisibleLoop = RunService.Heartbeat:Connect(function()
+                if not invisibleActive or not realChar or not realRoot or not charClone then
+                    if invisibleLoop then invisibleLoop:Disconnect() end
+                    return
+                end
+                
+                -- הדמות האמיתית עוקבת אחרי המיקום של הקלון הפיזיקלי אך נמצאת עמוק מתחתיו
+                local cloneRoot = charClone:FindFirstChild("HumanoidRootPart")
+                if cloneRoot then
+                    realRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
+                    realRoot.AssemblyAngularVelocity = Vector3.new(0,0,0)
+                    realRoot.CFrame = cloneRoot.CFrame * CFrame.new(0, -500, 0)
+                    
+                    -- קריאת כיוון התנועה מהמקלדת והעברה לקלון
+                    local moveDirection = realHum.MoveDirection
+                    local cloneHum = charClone:FindFirstChildOfClass("Humanoid")
+                    if cloneHum then
+                        cloneHum:Move(moveDirection, false)
+                        if UserInputService:IsKeyDown(Enum.KeyCode.Space) and cloneRoot.Position.Y < 500 then
+                            cloneHum.Jump = true
+                        end
+                    end
+                end
+            end)
+        end
+    else
+        -- ביטול הציט וחזרה חלקה למפה
+        if invisibleLoop then invisibleLoop:Disconnect() invisibleLoop = nil end
+        
+        if charClone then
+            local cloneRoot = charClone:FindFirstChild("HumanoidRootPart")
+            if cloneRoot and realRoot then
+                realChar:PivotTo(cloneRoot.CFrame)
+            end
+            charClone:Destroy()
+            charClone = nil
+        end
+        
+        if realChar and realRoot and realHum then
+            realRoot.AssemblyLinearVelocity = Vector3.new(0,0,0)
+            realRoot.AssemblyAngularVelocity = Vector3.new(0,0,0)
+            
+            for _, part in ipairs(realChar:GetDescendants()) do
+                if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                    part.CanCollide = true
+                    part.Transparency = 0
+                elseif part:IsA("Decal") then
+                    part.Transparency = 0
+                end
+            end
+            
+            camera.CameraSubject = realHum
+            realHum.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
+            realHum:ChangeState(Enum.HumanoidStateType.Running)
+        end
+    end
+end)
+
+-- 5. CTRL + CLICK TELEPORT
+_G.CtrlClickTP = false
+ctrlClickButton.MouseButton1Click:Connect(function()
+    _G.CtrlClickTP = not _G.CtrlClickTP
+    ctrlClickButton.Text = _G.CtrlClickTP and "Ctrl+Click TP: ON" or "Ctrl+Click TP: OFF"
+    ctrlClickButton.TextColor3 = _G.CtrlClickTP and Color3.new(0.3, 1, 0.3) or Color3.new(1, 0.3, 0.3)
+end)
+local mouse = playerObj:GetMouse()
+mouse.Button1Down:Connect(function()
+    if _G.CtrlClickTP and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) and mouse.Target then
+        local char = playerObj.Character
+        if char and char:FindFirstChild("HumanoidRootPart") then
+            local targetPos = mouse.Hit.Position + Vector3.new(0, 3, 0)
+            if invisibleActive and charClone then
+                local cloneRoot = charClone:FindFirstChild("HumanoidRootPart")
+                if cloneRoot then cloneRoot.CFrame = CFrame.new(targetPos) end
+            else
+                char.HumanoidRootPart.CFrame = CFrame.new(targetPos)
+            end
+        end
+    end
+end)
+
+-- 6. ANTI-RAGDOLL
+_G.AntiRagdoll = false
+antiRagdollButton.MouseButton1Click:Connect(function()
+    _G.AntiRagdoll = not _G.AntiRagdoll
+    antiRagdollButton.Text = _G.AntiRagdoll and "Anti-Ragdoll: ON" or "Anti-Ragdoll: OFF"
+    antiRagdollButton.TextColor3 = _G.AntiRagdoll and Color3.new(0.3, 1, 0.3) or Color3.new(1, 0.3, 0.3)
+end)
+task.spawn(function()
+    while true do
+        if _G.AntiRagdoll and playerObj.Character then
+            local hum = playerObj.Character:FindFirstChildOfClass("Humanoid")
+            if hum then
+                hum:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+                hum:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+            end
+        end
+        task.wait(0.5)
+    end
+end)
+
+-- 7. SUPER FAST RESPAWN
+game:GetService("Players").LocalPlayer.CharacterRemoving:Connect(function()
+    if playerObj then
+        task.defer(function()
+            playerObj:SetAttribute("RespawnTime", 0.1)
+        end)
+    end
+end)
+
+---------------------------------------------------------
+-- מערכת ESP HIGHLIGHT
+---------------------------------------------------------
+_G.ESP_Enabled = false
+local function addESP(p)
+    if p == game.Players.LocalPlayer then return end
+    local function applyHighlight(character)
+        if not _G.ESP_Enabled then return end
+        if character:FindFirstChild("ESPHighlight") then return end
+        local highlight = Instance.new("Highlight")
+        highlight.Name = "ESPHighlight"
+        highlight.FillColor = Color3.fromRGB(255, 0, 0)
+        highlight.FillTransparency = 0.5
+        highlight.OutlineColor = Color3.fromRGB(255, 255, 255)
+        highlight.Adornee = character
+        highlight.Parent = character
+    end
+    if p.Character then applyHighlight(p.Character) end
+    p.CharacterAdded:Connect(applyHighlight)
+end
+
+espButton.MouseButton1Click:Connect(function()
+    _G.ESP_Enabled = not _G.ESP_Enabled
+    espButton.Text = _G.ESP_Enabled and "ESP: ON" or "ESP: OFF"
+    espButton.TextColor3 = _G.ESP_Enabled and Color3.new(0.3, 1, 0.3) or Color3.new(1, 0.3, 0.3)
+    if _G.ESP_Enabled then
+        for _, p in ipairs(game.Players:GetPlayers()) do addESP(p) end
+    else
+        removeAllESP()
+    end
+end)
+game.Players.PlayerAdded:Connect(function(p) if _G.ESP_Enabled then addESP(p) end end)
+
+---------------------------------------------------------
+-- FLY LOGIC
+---------------------------------------------------------
+_G.Flying = false
 flyButton.MouseButton1Click:Connect(function()
     _G.Flying = not _G.Flying
+    flyButton.Text = _G.Flying and "Fly: ON" or "Fly: OFF"
+    flyButton.TextColor3 = _G.Flying and Color3.new(0.3, 1, 0.3) or Color3.new(1, 0.3, 0.3)
+    
     if _G.Flying then
-        flyButton.Text = "Fly: ON"
-        flyButton.TextColor3 = Color3.new(0.3, 1, 0.3)
         task.spawn(function()
-            local character = player.Character or player.CharacterAdded:Wait()
+            local character = playerObj.Character or playerObj.CharacterAdded:Wait()
             local root = character:WaitForChild("HumanoidRootPart")
             local humanoid = character:WaitForChild("Humanoid")
             local camera = workspace.CurrentCamera
@@ -561,29 +795,17 @@ flyButton.MouseButton1Click:Connect(function()
                 task.wait()
             end
             
-            con1:Disconnect()
-            con2:Disconnect()
-            
+            con1:Disconnect()con2:Disconnect()
             if bv then bv:Destroy() end
             if bg then bg:Destroy() end
-            
             if root then
                 root.Anchored = true
                 root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
                 root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
-                
-                if humanoid then
-                    humanoid.PlatformStand = false
-                    humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
-                end
-                
-                task.wait(0.05) 
-                root.Anchored = false
+                if humanoid then humanoid.PlatformStand = false humanoid:ChangeState(Enum.HumanoidStateType.Running) end
+                task.wait(0.05)root.Anchored = false
             end
         end)
-    else
-        flyButton.Text = "Fly: OFF"
-        flyButton.TextColor3 = Color3.new(1, 0.3, 0.3)
     end
 end)
 
@@ -598,7 +820,7 @@ local function update(input)
 end
 frame.InputBegan:Connect(function(input)
     if UserInputService:GetFocusedTextBox() then return end
-    if input.Position.Y > sliderFrame.AbsolutePosition.Y - 20 and input.Position.Y < sliderFrame.AbsolutePosition.Y + 20 and playerGroup.Visible then return end
+    if playerGroup.Visible and input.Position.Y > playerGroup.AbsolutePosition.Y then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
         dragging = true dragStart = input.Position startPos = frame.Position
         input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
